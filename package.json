@@ -1,0 +1,13 @@
+{
+  "name": "motion-api-explorer",
+  "version": "1.0.0",
+  "description": "Interactive Motion API explorer",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

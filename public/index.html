@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Motion API Explorer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3350;
+      --accent: #5865f2;
+      --accent-hover: #4752c4;
+      --green: #3ba55c;
+      --text: #e2e4f0;
+      --muted: #8b8fa8;
+      --tag-get: #3ba55c;
+      --tag-get-bg: rgba(59,165,92,0.12);
+      --tag-post: #e5a94e;
+      --tag-post-bg: rgba(229,169,78,0.12);
+      --tag-patch: #79b8ff;
+      --tag-patch-bg: rgba(121,184,255,0.12);
+      --tag-delete: #e5484d;
+      --tag-delete-bg: rgba(229,72,77,0.12);
+      --radius: 8px;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .logo span { color: var(--accent); }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+      border: 1px solid transparent;
+    }
+    .nav-link:hover { background: var(--surface2); color: var(--text); }
+    .nav-link.active { background: rgba(88,101,242,0.12); color: var(--accent); border-color: rgba(88,101,242,0.3); }
+
+    .api-key-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .api-key-bar label {
+      font-size: 13px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .api-key-input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      padding: 6px 12px;
+      width: 300px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .api-key-input:focus { border-color: var(--accent); }
+    .api-key-input::placeholder { color: var(--muted); }
+
+    .key-status {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      white-space: nowrap;
+    }
+    .key-status.saved { background: rgba(59,165,92,0.15); color: var(--green); }
+    .key-status.missing { background: rgba(229,72,77,0.15); color: #e5484d; }
+
+    /* ── Layout ── */
+    .layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      height: calc(100vh - 60px);
+    }
+
+    /* ── Sidebar ── */
+    aside {
+      width: 260px;
+      min-width: 260px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 16px 0;
+    }
+
+    .sidebar-section { margin-bottom: 4px; }
+
+    .sidebar-section-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 10px 16px 4px;
+    }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: background 0.1s;
+      border-left: 2px solid transparent;
+    }
+    .sidebar-item:hover { background: var(--surface2); }
+    .sidebar-item.active {
+      background: rgba(88,101,242,0.1);
+      border-left-color: var(--accent);
+    }
+
+    .method-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      min-width: 38px;
+      text-align: center;
+    }
+    .method-GET    { background: var(--tag-get-bg);    color: var(--tag-get); }
+    .method-POST   { background: var(--tag-post-bg);   color: var(--tag-post); }
+    .method-PATCH  { background: var(--tag-patch-bg);  color: var(--tag-patch); }
+    .method-DELETE { background: var(--tag-delete-bg); color: var(--tag-delete); }
+
+    .sidebar-item-name {
+      font-size: 13px;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .version-tag {
+      margin-left: auto;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: rgba(88,101,242,0.15);
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+    .version-tag.v1 { background: rgba(139,143,168,0.15); color: var(--muted); }
+    .version-tag.beta { background: rgba(229,169,78,0.15); color: var(--tag-post); }
+
+    /* ── Main ── */
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .welcome {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 12px;
+      color: var(--muted);
+      text-align: center;
+    }
+    .welcome h2 { font-size: 22px; color: var(--text); }
+    .welcome p { font-size: 14px; max-width: 380px; line-height: 1.6; }
+
+    /* ── Endpoint Panel ── */
+    .endpoint-panel { display: flex; flex-direction: column; gap: 20px; }
+
+    .endpoint-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .endpoint-method {
+      font-size: 14px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 6px;
+    }
+
+    .endpoint-path {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .endpoint-description {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 12px 16px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .card-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+    /* ── Params ── */
+    .param-row {
+      display: grid;
+      grid-template-columns: 200px 1fr 80px;
+      gap: 8px;
+      align-items: start;
+    }
+
+    .param-info { display: flex; flex-direction: column; gap: 2px; padding-top: 6px; }
+
+    .param-name {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .param-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+    .param-type { font-size: 11px; color: var(--muted); }
+
+    .param-required {
+      font-size: 10px;
+      font-weight: 700;
+      color: #e5484d;
+      background: rgba(229,72,77,0.12);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .param-optional {
+      font-size: 10px;
+      color: var(--muted);
+      background: var(--surface2);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .param-input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      padding: 7px 10px;
+      outline: none;
+      transition: border-color 0.15s;
+      width: 100%;
+    }
+    .param-input:focus { border-color: var(--accent); }
+    .param-input::placeholder { color: var(--muted); opacity: 0.6; }
+
+    .param-input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      margin-top: 9px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .param-hint {
+      font-size: 11px;
+      color: var(--muted);
+      padding-top: 6px;
+    }
+
+    /* ── Execute ── */
+    .execute-row { display: flex; align-items: center; gap: 12px; }
+
+    .btn-execute {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 9px 24px;
+      cursor: pointer;
+      transition: background 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-execute:hover { background: var(--accent-hover); }
+    .btn-execute:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-clear {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .btn-clear:hover { color: var(--text); border-color: var(--text); }
+
+    .spinner {
+      display: none;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Response ── */
+    .response-header { display: flex; align-items: center; gap: 10px; }
+
+    .status-pill {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .status-2xx { background: rgba(59,165,92,0.15); color: var(--green); }
+    .status-4xx { background: rgba(229,72,77,0.15); color: #e5484d; }
+    .status-5xx { background: rgba(229,169,72,0.15); color: #e5a94e; }
+
+    .response-time {
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+    }
+
+    .copy-btn {
+      margin-left: auto;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px;
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    .copy-btn:hover { color: var(--text); }
+
+    pre.response-body {
+      background: var(--bg);
+      border-radius: 6px;
+      padding: 16px;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      line-height: 1.6;
+      overflow-x: auto;
+      white-space: pre;
+      max-height: 600px;
+      overflow-y: auto;
+      color: var(--text);
+    }
+
+    .json-key    { color: #79b8ff; }
+    .json-string { color: #9ecbff; }
+    .json-number { color: #f8c555; }
+    .json-bool   { color: #79b8ff; }
+    .json-null   { color: var(--muted); }
+
+    .response-placeholder {
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+      padding: 32px;
+      font-style: italic;
+    }
+
+    /* ── Debug Preview ── */
+    .debug-preview {
+      background: var(--bg);
+      padding: 16px;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      line-height: 1.8;
+      overflow-x: auto;
+    }
+    .debug-section-label {
+      font-size: 10px; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--muted);
+      margin-top: 14px; margin-bottom: 5px; display: block;
+    }
+    .debug-section-label:first-child { margin-top: 0; }
+    .debug-url-input {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
+      color: var(--text); font-family: var(--font-mono); font-size: 12px;
+      padding: 5px 9px; width: 100%; outline: none; transition: border-color .15s;
+    }
+    .debug-url-input:focus { border-color: var(--accent); }
+    .debug-body-input {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
+      color: var(--text); font-family: var(--font-mono); font-size: 12px;
+      padding: 9px; width: 100%; resize: vertical; outline: none;
+      transition: border-color .15s; min-height: 120px; line-height: 1.6; tab-size: 2;
+      display: block;
+    }
+    .debug-body-input:focus { border-color: var(--accent); }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Motion <span>API</span> Explorer</div>
+  <nav class="nav-links">
+    <a href="/" class="nav-link active">API Explorer</a>
+    <a href="/dashboard.html" class="nav-link">Dashboard</a>
+  </nav>
+  <div class="api-key-bar">
+    <label for="globalApiKey">API Key</label>
+    <input type="password" id="globalApiKey" class="api-key-input" placeholder="Enter your X-API-Key…" autocomplete="off" />
+    <span class="key-status missing" id="keyStatus">Not set</span>
+  </div>
+</header>
+
+<div class="layout">
+  <aside id="sidebar"></aside>
+  <main id="main">
+    <div class="welcome">
+      <h2>Motion API Explorer</h2>
+      <p>Select an endpoint from the sidebar, fill in any required parameters, and click <strong>Execute</strong> to inspect the live response.</p>
+    </div>
+  </main>
+</div>
+
+<script>
+// ── Endpoint definitions ──────────────────────────────────────────────────────
+// All endpoints below use the public Motion API at api.usemotion.com with X-API-Key auth.
+// The internal app API (api-docs.usemotion.com) uses bearer token auth and is not accessible here.
+const ENDPOINTS = [
+
+  // ── Users ──
+  {
+    group: 'Users', id: 'get-me', method: 'GET', path: '/v1/users/me', version: 'v1',
+    summary: 'Get current user',
+    description: 'Returns information on the owner of this API key.',
+    pathParams: [], queryParams: [],
+  },
+  {
+    group: 'Users', id: 'list-users', method: 'GET', path: '/v1/users', version: 'v1',
+    summary: 'List users',
+    description: 'Returns all users in the specified workspace or team.',
+    pathParams: [],
+    queryParams: [
+      { name: 'workspaceId', type: 'string', required: false, hint: 'Filter to members of this workspace' },
+      { name: 'teamId',      type: 'string', required: false, hint: 'Filter to members of this team' },
+      { name: 'cursor',      type: 'string', required: false, hint: 'Pagination cursor' },
+    ],
+  },
+
+  // ── Workspaces ──
+  {
+    group: 'Workspaces', id: 'list-workspaces', method: 'GET', path: '/v1/workspaces', version: 'v1',
+    summary: 'List workspaces',
+    description: 'Returns all workspaces the authenticated user is a member of.',
+    pathParams: [],
+    queryParams: [
+      { name: 'cursor', type: 'string', required: false, hint: 'Pagination cursor from a previous response' },
+      { name: 'ids',    type: 'string', required: false, hint: 'Comma-separated workspace IDs to expand' },
+    ],
+  },
+
+  // ── Projects ──
+  {
+    group: 'Projects', id: 'list-projects', method: 'GET', path: '/v1/projects', version: 'v1',
+    summary: 'List projects',
+    description: 'Returns all projects for a workspace. Includes stages[], activeStageDefinitionId, taskCount, completedTaskCount, duration, completedDuration, and scheduledStatus.',
+    pathParams: [],
+    queryParams: [
+      { name: 'workspaceId', type: 'string', required: false, hint: 'The workspace to list projects for' },
+      { name: 'cursor',      type: 'string', required: false, hint: 'Pagination cursor' },
+    ],
+  },
+  {
+    group: 'Projects', id: 'get-project', method: 'GET', path: '/v1/projects/:id', version: 'v1',
+    summary: 'Get project',
+    description: 'Returns a single project by ID, including stages[], activeStageDefinitionId, task counts, and duration data.',
+    pathParams: [
+      { name: 'id', type: 'string', required: true, hint: 'The project ID' },
+    ],
+    queryParams: [],
+  },
+
+  // ── Tasks ──
+  {
+    group: 'Tasks', id: 'list-tasks', method: 'GET', path: '/v1/tasks', version: 'v1',
+    summary: 'List tasks',
+    description: 'Returns tasks filtered by workspace, project, assignee, status, or label.',
+    pathParams: [],
+    queryParams: [
+      { name: 'workspaceId',        type: 'string',  required: false, hint: 'Filter by workspace (defaults to all user workspaces)' },
+      { name: 'projectId',          type: 'string',  required: false, hint: 'Filter by project' },
+      { name: 'assigneeId',         type: 'string',  required: false, hint: 'Filter by assignee user ID' },
+      { name: 'name',               type: 'string',  required: false, hint: 'Case-insensitive name filter' },
+      { name: 'label',              type: 'string',  required: false, hint: 'Filter by label name' },
+      { name: 'status',             type: 'string',  required: false, hint: 'Comma-separated status names (cannot use with includeAllStatuses)' },
+      { name: 'includeAllStatuses', type: 'boolean', required: false, hint: 'Include all statuses including completed/cancelled' },
+      { name: 'cursor',             type: 'string',  required: false, hint: 'Pagination cursor' },
+    ],
+  },
+  {
+    group: 'Tasks', id: 'get-task', method: 'GET', path: '/v1/tasks/:id', version: 'v1',
+    summary: 'Get task',
+    description: 'Returns a single task by ID with full assignee, status, scheduling, and custom field data.',
+    pathParams: [
+      { name: 'id', type: 'string', required: true, hint: 'The task ID' },
+    ],
+    queryParams: [],
+  },
+
+  // ── Tasks v2 ──
+  {
+    group: 'Tasks', id: 'query-tasks-v2', method: 'POST', path: '/v2/tasks/query', version: 'v2',
+    summary: 'Query tasks (v2)',
+    description: 'Query tasks with advanced filters via POST body. Returns v2 task objects including stageDefinitionId.',
+    pathParams: [],
+    queryParams: [
+      { name: 'workspaceId',        type: 'string',  required: true,  hint: 'The workspace to query tasks from' },
+      { name: 'projectId',          type: 'string',  required: false, hint: 'Filter by project ID' },
+      { name: 'assigneeId',         type: 'string',  required: false, hint: 'Filter by assignee user ID' },
+      { name: 'stageDefinitionId',  type: 'string',  required: false, hint: 'Filter by stage definition ID' },
+      { name: 'status',             type: 'string',  required: false, hint: 'Filter by status name' },
+      { name: 'includeAllStatuses', type: 'boolean', required: false, hint: 'Include completed and cancelled tasks' },
+      { name: 'cursor',             type: 'string',  required: false, hint: 'Pagination cursor' },
+    ],
+  },
+
+  // ── Recurring Tasks ──
+  {
+    group: 'Recurring Tasks', id: 'list-recurring-tasks', method: 'GET', path: '/v1/recurring-tasks', version: 'v1',
+    summary: 'List recurring tasks',
+    description: 'Returns all recurring task definitions for a workspace.',
+    pathParams: [],
+    queryParams: [
+      { name: 'workspaceId', type: 'string', required: true,  hint: 'The workspace ID' },
+      { name: 'cursor',      type: 'string', required: false, hint: 'Pagination cursor' },
+    ],
+  },
+
+  // ── Comments ──
+  {
+    group: 'Comments', id: 'get-comments', method: 'GET', path: '/v1/comments', version: 'v1',
+    summary: 'Get comments',
+    description: 'Returns all comments on a task.',
+    pathParams: [],
+    queryParams: [
+      { name: 'taskId', type: 'string', required: true,  hint: 'The task ID to fetch comments for' },
+      { name: 'cursor', type: 'string', required: false, hint: 'Pagination cursor' },
+    ],
+  },
+
+  // ── Schedules ──
+  {
+    group: 'Schedules', id: 'get-schedules', method: 'GET', path: '/v1/schedules', version: 'v1',
+    summary: 'Get schedules',
+    description: 'Returns all schedules for the authenticated user.',
+    pathParams: [], queryParams: [],
+  },
+
+  // ── Statuses ──
+  {
+    group: 'Statuses', id: 'get-statuses', method: 'GET', path: '/v1/statuses', version: 'v1',
+    summary: 'Get statuses',
+    description: 'Returns all task statuses for a workspace.',
+    pathParams: [],
+    queryParams: [
+      { name: 'workspaceId', type: 'string', required: false, hint: 'Get statuses for this workspace' },
+    ],
+  },
+
+  // ── Custom Fields ──
+  {
+    group: 'Custom Fields', id: 'get-custom-fields', method: 'GET',
+    path: '/beta/workspaces/:workspaceId/custom-fields', version: 'beta',
+    summary: 'Get custom fields',
+    description: 'Returns all custom fields defined for a workspace.',
+    pathParams: [
+      { name: 'workspaceId', type: 'string', required: true, hint: 'The workspace ID' },
+    ],
+    queryParams: [],
+  },
+];
+
+// ── API Key persistence ───────────────────────────────────────────────────────
+const apiKeyInput = document.getElementById('globalApiKey');
+const keyStatus   = document.getElementById('keyStatus');
+const STORAGE_KEY = 'motion_api_key';
+
+function updateKeyStatus() {
+  const val = apiKeyInput.value.trim();
+  if (val) {
+    localStorage.setItem(STORAGE_KEY, val);
+    keyStatus.textContent = 'Saved';
+    keyStatus.className = 'key-status saved';
+  } else {
+    localStorage.removeItem(STORAGE_KEY);
+    keyStatus.textContent = 'Not set';
+    keyStatus.className = 'key-status missing';
+  }
+}
+
+const saved = localStorage.getItem(STORAGE_KEY);
+if (saved) {
+  apiKeyInput.value = saved;
+  keyStatus.textContent = 'Saved';
+  keyStatus.className = 'key-status saved';
+}
+apiKeyInput.addEventListener('input', updateKeyStatus);
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+function buildSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const groups  = [...new Set(ENDPOINTS.map(e => e.group))];
+
+  groups.forEach(group => {
+    const section = document.createElement('div');
+    section.className = 'sidebar-section';
+
+    const title = document.createElement('div');
+    title.className = 'sidebar-section-title';
+    title.textContent = group;
+    section.appendChild(title);
+
+    ENDPOINTS.filter(e => e.group === group).forEach(ep => {
+      const item = document.createElement('div');
+      item.className = 'sidebar-item';
+      item.dataset.id = ep.id;
+      const vTag = ep.version === 'v2'   ? `<span class="version-tag v2">v2</span>`
+                 : ep.version === 'beta' ? `<span class="version-tag beta">beta</span>`
+                 :                         `<span class="version-tag v1">v1</span>`;
+      item.innerHTML = `
+        <span class="method-badge method-${ep.method}">${ep.method}</span>
+        <span class="sidebar-item-name">${ep.summary}</span>
+        ${vTag}
+      `;
+      item.addEventListener('click', () => loadEndpoint(ep.id));
+      section.appendChild(item);
+    });
+
+    sidebar.appendChild(section);
+  });
+}
+
+// ── Endpoint rendering ────────────────────────────────────────────────────────
+let activeId = null;
+
+function loadEndpoint(id) {
+  activeId = id;
+  const ep = ENDPOINTS.find(e => e.id === id);
+
+  document.querySelectorAll('.sidebar-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.id === id);
+  });
+
+  const main = document.getElementById('main');
+  main.innerHTML = '';
+
+  const panel = document.createElement('div');
+  panel.className = 'endpoint-panel';
+
+  const methodCls = `method-${ep.method}`;
+  const vLabel = ep.version === 'v2' ? ' <span class="version-tag v2" style="font-size:11px;padding:2px 7px;vertical-align:middle;">v2</span>'
+               : ep.version === 'beta' ? ' <span class="version-tag beta" style="font-size:11px;padding:2px 7px;vertical-align:middle;">beta</span>'
+               : ' <span class="version-tag v1" style="font-size:11px;padding:2px 7px;vertical-align:middle;">v1</span>';
+
+  panel.innerHTML = `
+    <div class="endpoint-header">
+      <span class="endpoint-method ${methodCls}">${ep.method}</span>
+      <span class="endpoint-path">${ep.path}${vLabel}</span>
+    </div>
+    ${ep.description ? `<p class="endpoint-description">${ep.description}</p>` : ''}
+  `;
+
+  // Parameters card
+  const allParams = [...(ep.pathParams || []), ...(ep.queryParams || [])];
+  if (allParams.length > 0) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<div class="card-header">Parameters</div>`;
+
+    const body = document.createElement('div');
+    body.className = 'card-body';
+
+    allParams.forEach(param => {
+      const row = document.createElement('div');
+      row.className = 'param-row';
+
+      const isPath = (ep.pathParams || []).includes(param);
+      const locBadge = isPath
+        ? '<span class="param-optional">path</span>'
+        : ep.method === 'POST'
+          ? '<span class="param-optional" style="background:rgba(229,169,78,.12);color:var(--tag-post)">body</span>'
+          : '<span class="param-optional">query</span>';
+      const reqBadge = param.required
+        ? '<span class="param-required">required</span>'
+        : '<span class="param-optional">optional</span>';
+
+      let inputEl;
+      if (param.type === 'boolean') {
+        inputEl = `<input type="checkbox" class="param-input" id="param-${param.name}" data-param="${param.name}" data-path="${isPath}" />`;
+      } else {
+        inputEl = `<input type="text" class="param-input" id="param-${param.name}" data-param="${param.name}" data-path="${isPath}" placeholder="${param.hint || ''}" />`;
+      }
+
+      row.innerHTML = `
+        <div class="param-info">
+          <span class="param-name">${param.name}</span>
+          <div class="param-meta">${locBadge} ${reqBadge} <span class="param-type">${param.type}</span></div>
+        </div>
+        ${inputEl}
+        <div class="param-hint">${param.hint || ''}</div>
+      `;
+      body.appendChild(row);
+    });
+
+    card.appendChild(body);
+    panel.appendChild(card);
+  }
+
+  // Request Preview card
+  const debugCard = document.createElement('div');
+  debugCard.className = 'card';
+  debugCard.innerHTML = `
+    <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+      <span>Request Preview</span>
+      <div style="display:flex;gap:6px">
+        <button class="copy-btn" id="resetReqBtn">↺ Reset</button>
+        <button class="copy-btn" id="copyReqBtn">Copy cURL</button>
+      </div>
+    </div>
+    <div class="debug-preview" id="debugPreview"><span style="color:var(--muted);font-style:italic">Fill in parameters above to see the constructed request.</span></div>
+  `;
+  panel.appendChild(debugCard);
+
+  // Execute card
+  const execCard = document.createElement('div');
+  execCard.className = 'card';
+  execCard.innerHTML = `<div class="card-header">Execute</div>`;
+  const execBody = document.createElement('div');
+  execBody.className = 'card-body';
+  execBody.innerHTML = `
+    <div class="execute-row">
+      <button class="btn-execute" id="execBtn">
+        <div class="spinner" id="spinner"></div>
+        Execute
+      </button>
+      <button class="btn-clear" id="clearBtn">Clear</button>
+    </div>
+  `;
+  execCard.appendChild(execBody);
+  panel.appendChild(execCard);
+
+  // Response card
+  const respCard = document.createElement('div');
+  respCard.className = 'card';
+  respCard.innerHTML = `<div class="card-header">Response</div>`;
+  const respBody = document.createElement('div');
+  respBody.className = 'card-body';
+  respBody.id = 'responseBody';
+  respBody.innerHTML = `<div class="response-placeholder">No response yet — click Execute to make the request.</div>`;
+  respCard.appendChild(respBody);
+  panel.appendChild(respCard);
+
+  main.appendChild(panel);
+
+  // Restore persisted param values
+  const stored = JSON.parse(localStorage.getItem(`motion_params_${id}`) || '{}');
+  Object.entries(stored).forEach(([name, val]) => {
+    const el = document.getElementById(`param-${name}`);
+    if (!el) return;
+    if (el.type === 'checkbox') el.checked = val === 'true';
+    else el.value = val;
+  });
+
+  panel.addEventListener('input', () => { saveParams(id); updateDebugPreview(ep); });
+  panel.addEventListener('change', () => { saveParams(id); updateDebugPreview(ep); });
+  apiKeyInput.addEventListener('input', () => updateDebugPreview(ep), { signal: panel._abortCtrl?.signal });
+
+  document.getElementById('execBtn').addEventListener('click', () => executeRequest(ep));
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    document.getElementById('responseBody').innerHTML =
+      `<div class="response-placeholder">No response yet — click Execute to make the request.</div>`;
+  });
+  document.getElementById('resetReqBtn').addEventListener('click', () => resetDebugPreview(ep));
+  document.getElementById('copyReqBtn').addEventListener('click', () => copyCurlRequest(ep));
+
+  updateDebugPreview(ep);
+}
+
+function saveParams(id) {
+  const vals = {};
+  document.querySelectorAll('.param-input').forEach(el => {
+    const name = el.dataset.param;
+    vals[name] = el.type === 'checkbox' ? String(el.checked) : el.value;
+  });
+  localStorage.setItem(`motion_params_${id}`, JSON.stringify(vals));
+}
+
+// ── Request preview ───────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function collectParams(ep) {
+  let resolvedPath = ep.path;
+  const queryParams = {};
+  document.querySelectorAll('.param-input').forEach(el => {
+    const name   = el.dataset.param;
+    const isPath = el.dataset.path === 'true';
+    const val    = el.type === 'checkbox' ? (el.checked ? 'true' : '') : el.value.trim();
+    if (!val) return;
+    if (isPath) resolvedPath = resolvedPath.replace(`:${name}`, encodeURIComponent(val));
+    else queryParams[name] = val;
+  });
+  return { resolvedPath, queryParams };
+}
+
+function buildDebugSnapshot(ep) {
+  const isPost   = ep.method === 'POST';
+  const apiKey   = apiKeyInput.value.trim();
+  const host     = ep.path.startsWith('/v2/') ? 'internal.usemotion.com' : 'api.usemotion.com';
+  const { resolvedPath, queryParams } = collectParams(ep);
+  const qs = new URLSearchParams(queryParams);
+  const fullUrl = `https://${host}${resolvedPath}${!isPost && qs.toString() ? '?' + qs : ''}`;
+  const masked  = apiKey
+    ? apiKey.slice(0, 4) + '•'.repeat(Math.max(0, apiKey.length - 8)) + apiKey.slice(-4)
+    : '(not set)';
+
+  let bodyObj = null;
+  if (isPost && Object.keys(queryParams).length) {
+    bodyObj = {};
+    Object.entries(queryParams).forEach(([k, v]) => {
+      bodyObj[k] = v === 'true' ? true : v === 'false' ? false : v;
+    });
+  }
+  return { isPost, apiKey, host, fullUrl, masked, bodyObj };
+}
+
+function updateDebugPreview(ep) {
+  const el = document.getElementById('debugPreview');
+  if (!el) return;
+  const { isPost, fullUrl, masked, bodyObj } = buildDebugSnapshot(ep);
+  const bodyJson     = bodyObj ? JSON.stringify(bodyObj, null, 2) : '';
+  const methodColor  = isPost ? 'var(--tag-post)' : 'var(--tag-get)';
+
+  const urlInput = document.getElementById('debugUrl');
+  const bodyTA   = document.getElementById('debugBody');
+
+  if (urlInput) {
+    // Incremental update — only overwrite a field if the user hasn't manually changed it
+    if (urlInput.value === (urlInput.dataset.auto ?? '')) {
+      urlInput.value = fullUrl;
+    }
+    urlInput.dataset.auto = fullUrl;
+
+    const maskedEl = el.querySelector('.debug-masked-key');
+    if (maskedEl) maskedEl.textContent = masked;
+
+    if (isPost && bodyTA) {
+      if (bodyTA.value === (bodyTA.dataset.auto ?? '')) {
+        bodyTA.value = bodyJson;
+      }
+      bodyTA.dataset.auto = bodyJson;
+    }
+    return;
+  }
+
+  // First render — build the full DOM
+  el.innerHTML =
+    `<span class="debug-section-label">URL</span>` +
+    `<div style="display:flex;align-items:center;gap:8px">` +
+      `<span style="font-weight:700;color:${methodColor};flex-shrink:0">${ep.method}</span>` +
+      `<input type="text" id="debugUrl" class="debug-url-input" value="${esc(fullUrl)}" data-auto="${esc(fullUrl)}" />` +
+    `</div>` +
+    `\n<span class="debug-section-label">Headers</span>` +
+    `<span class="json-key">X-API-Key</span><span style="color:var(--muted)">: </span><span class="json-string debug-masked-key">${esc(masked)}</span>\n` +
+    (isPost ? `<span class="json-key">Content-Type</span><span style="color:var(--muted)">: </span><span class="json-string">application/json</span>\n` : ``) +
+    `<span class="json-key">Accept</span><span style="color:var(--muted)">: </span><span class="json-string">application/json</span>` +
+    (isPost
+      ? `\n<span class="debug-section-label">Body</span>` +
+        `<textarea id="debugBody" class="debug-body-input" data-auto="${esc(bodyJson)}" spellcheck="false">${esc(bodyJson)}</textarea>`
+      : ``);
+}
+
+function resetDebugPreview(ep) {
+  const { fullUrl, bodyObj } = buildDebugSnapshot(ep);
+  const urlInput = document.getElementById('debugUrl');
+  if (urlInput) { urlInput.value = fullUrl; urlInput.dataset.auto = fullUrl; }
+  const bodyTA = document.getElementById('debugBody');
+  if (bodyTA) {
+    const bodyJson = bodyObj ? JSON.stringify(bodyObj, null, 2) : '';
+    bodyTA.value = bodyJson; bodyTA.dataset.auto = bodyJson;
+  }
+}
+
+function copyCurlRequest(ep) {
+  const urlInput = document.getElementById('debugUrl');
+  const bodyTA   = document.getElementById('debugBody');
+  const apiKey   = apiKeyInput.value.trim();
+  const url      = urlInput?.value.trim() || buildDebugSnapshot(ep).fullUrl;
+  const isPost   = ep.method === 'POST';
+  let curl = `curl -X ${ep.method} \\\n  '${url}' \\\n  -H 'X-API-Key: ${apiKey}' \\\n  -H 'Accept: application/json'`;
+  if (isPost) {
+    const body = bodyTA?.value.trim() || '{}';
+    curl += ` \\\n  -H 'Content-Type: application/json' \\\n  -d '${body}'`;
+  }
+  navigator.clipboard.writeText(curl).then(() => {
+    const btn = document.getElementById('copyReqBtn');
+    if (btn) { btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = 'Copy cURL', 1500); }
+  });
+}
+
+// ── Execute request ───────────────────────────────────────────────────────────
+async function executeRequest(ep) {
+  const apiKey = apiKeyInput.value.trim();
+  if (!apiKey) { alert('Please enter your API key at the top of the page.'); return; }
+
+  const btn     = document.getElementById('execBtn');
+  const spinner = document.getElementById('spinner');
+  btn.disabled  = true;
+  spinner.style.display = 'block';
+
+  const isPost   = ep.method === 'POST';
+  const urlInput = document.getElementById('debugUrl');
+  const bodyTA   = document.getElementById('debugBody');
+
+  // Derive proxy path from the editable URL (strip scheme+host, prepend /proxy)
+  const rawUrl   = urlInput?.value.trim();
+  const proxyUrl = rawUrl
+    ? rawUrl.replace(/^https?:\/\/[^/]+/, '/proxy')
+    : (() => {
+        const { resolvedPath, queryParams } = collectParams(ep);
+        const qs = new URLSearchParams(queryParams);
+        return `/proxy${resolvedPath}${!isPost && qs.toString() ? '?' + qs : ''}`;
+      })();
+
+  // Validate + grab body for POST
+  let postBody = null;
+  if (isPost) {
+    const raw = bodyTA?.value.trim() || '{}';
+    try { JSON.parse(raw); } catch {
+      alert('Body contains invalid JSON — please fix it before submitting.');
+      btn.disabled = false; spinner.style.display = 'none';
+      return;
+    }
+    postBody = raw;
+  }
+
+  const start = Date.now();
+  try {
+    const fetchOpts = { method: ep.method, headers: { 'X-API-Key': apiKey } };
+    if (isPost) {
+      fetchOpts.headers['Content-Type'] = 'application/json';
+      fetchOpts.body = postBody;
+    }
+    const res  = await fetch(proxyUrl, fetchOpts);
+    const text = await res.text();
+    const ms   = Date.now() - start;
+    let parsed;
+    try { parsed = JSON.parse(text); } catch { parsed = text; }
+    renderResponse(res.status, parsed, ms);
+  } catch (err) {
+    renderResponse(0, { error: err.message }, Date.now() - start);
+  } finally {
+    btn.disabled = false;
+    spinner.style.display = 'none';
+  }
+}
+
+// ── Response rendering ────────────────────────────────────────────────────────
+function renderResponse(status, data, ms) {
+  const body = document.getElementById('responseBody');
+  const statusClass = status >= 500 ? 'status-5xx' : status >= 400 ? 'status-4xx' : 'status-2xx';
+  const statusLabel = status === 0 ? 'Network Error' : `${status}`;
+  const formatted   = typeof data === 'string' ? data : syntaxHighlight(JSON.stringify(data, null, 2));
+
+  body.innerHTML = `
+    <div class="response-header">
+      <span class="status-pill ${statusClass}">${statusLabel}</span>
+      <span class="response-time">${ms} ms</span>
+      <button class="copy-btn" id="copyBtn">Copy JSON</button>
+    </div>
+    <pre class="response-body">${formatted}</pre>
+  `;
+
+  document.getElementById('copyBtn').addEventListener('click', () => {
+    const raw = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    navigator.clipboard.writeText(raw).then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy JSON', 1500);
+    });
+  });
+}
+
+function syntaxHighlight(json) {
+  return json
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(
+      /("(\\u[\dA-Fa-f]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+      match => {
+        let cls = 'json-number';
+        if (/^"/.test(match)) cls = /:$/.test(match) ? 'json-key' : 'json-string';
+        else if (/true|false/.test(match)) cls = 'json-bool';
+        else if (/null/.test(match)) cls = 'json-null';
+        return `<span class="${cls}">${match}</span>`;
+      }
+    );
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+buildSidebar();
+</script>
+</body>
+</html>

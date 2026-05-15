@@ -1,0 +1,3206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project Dashboard — Motion</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a; --surface3: #2a2f45;
+      --border: #2e3350; --accent: #5865f2; --accent-hover: #4752c4;
+      --green: #3ba55c; --green-bg: rgba(59,165,92,.12);
+      --yellow: #e5a94e; --yellow-bg: rgba(229,169,78,.12);
+      --red: #e5484d; --red-bg: rgba(229,72,77,.12);
+      --blue: #79b8ff; --purple: #b392f0;
+      --text: #e2e4f0; --muted: #8b8fa8;
+      --radius: 8px; --mono: 'JetBrains Mono','Fira Code',monospace;
+    }
+    body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+    /* ── Header ── */
+    header { background:var(--surface); border-bottom:1px solid var(--border); padding:0 24px; height:60px; display:flex; align-items:center; gap:16px; position:sticky; top:0; z-index:100; }
+    .logo { font-size:17px; font-weight:700; white-space:nowrap; }
+    .logo span { color:var(--accent); }
+    .tab-nav { display:flex; gap:2px; margin-left:8px; }
+    .tab-btn { background:transparent; border:none; color:var(--muted); font-size:13px; font-weight:500; padding:6px 14px; border-radius:6px; cursor:pointer; transition:color .15s,background .15s; }
+    .tab-btn:hover { color:var(--text); background:var(--surface2); }
+    .tab-btn.active { color:var(--text); background:rgba(88,101,242,.15); }
+    .nav-link { font-size:13px; color:var(--muted); text-decoration:none; padding:4px 10px; border-radius:6px; transition:color .15s,background .15s; }
+    .nav-link:hover { color:var(--text); background:var(--surface2); }
+    .api-key-bar { display:flex; align-items:center; gap:8px; margin-left:auto; }
+    .api-key-bar label { font-size:13px; color:var(--muted); white-space:nowrap; }
+    .api-key-input { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); color:var(--text); font-family:var(--mono); font-size:13px; padding:6px 12px; width:260px; outline:none; transition:border-color .15s; }
+    .api-key-input:focus { border-color:var(--accent); }
+    .api-key-input::placeholder { color:var(--muted); }
+    .key-status { font-size:12px; padding:4px 10px; border-radius:12px; white-space:nowrap; }
+    .key-status.saved  { background:var(--green-bg); color:var(--green); }
+    .key-status.missing { background:var(--red-bg); color:var(--red); }
+
+    /* ── Views ── */
+    .view { display:none; }
+    .view.active { display:block; }
+    .page { max-width:1200px; margin:0 auto; padding:28px 24px; }
+
+    /* ── Buttons ── */
+    .btn { border:none; border-radius:6px; font-size:13px; font-weight:600; padding:8px 20px; cursor:pointer; transition:background .15s,opacity .15s; display:inline-flex; align-items:center; gap:8px; white-space:nowrap; }
+    .btn-primary { background:var(--accent); color:#fff; }
+    .btn-primary:hover { background:var(--accent-hover); }
+    .btn-primary:disabled { opacity:.4; cursor:not-allowed; }
+    .btn-ghost { background:transparent; color:var(--muted); border:1px solid var(--border); }
+    .btn-ghost:hover { color:var(--text); border-color:var(--text); }
+    .btn-ghost.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .btn-back  { background:var(--surface2); color:var(--text); border:1px solid var(--border); padding:6px 14px; font-size:13px; }
+    .btn-back:hover { background:var(--surface3); }
+    .spinner { width:13px; height:13px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; display:none; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ── Field ── */
+    .field-input { background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px; padding:7px 12px; outline:none; transition:border-color .15s; }
+    .field-input:focus { border-color:var(--accent); }
+    .field-input::placeholder { color:var(--muted); opacity:.6; }
+    .field-group { display:flex; flex-direction:column; gap:5px; }
+    .field-group label { font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); }
+
+    /* ── Alerts ── */
+    .alert { padding:11px 15px; border-radius:6px; font-size:13px; line-height:1.5; margin-bottom:18px; }
+    .alert-error   { background:var(--red-bg); color:var(--red); border:1px solid rgba(229,72,77,.25); }
+    .alert-warning { background:var(--yellow-bg); color:var(--yellow); border:1px solid rgba(229,169,78,.25); }
+    .alert-info    { background:rgba(88,101,242,.1); color:var(--blue); border:1px solid rgba(88,101,242,.25); }
+
+    /* ── Cards ── */
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+    .card-header { padding:11px 15px; background:var(--surface2); border-bottom:1px solid var(--border); font-size:11px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); display:flex; align-items:center; justify-content:space-between; }
+    .card-body { padding:15px; }
+
+    /* ── Browse View ── */
+    .browse-layout { display:flex; min-height:calc(100vh - 52px); }
+    .browse-folder-nav { width:200px; flex-shrink:0; border-right:1px solid var(--border); padding:20px 0; background:var(--surface); }
+    .browse-folder-nav-title { font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); padding:0 16px 12px; }
+    .browse-folder-item { display:flex; align-items:center; justify-content:space-between; padding:7px 16px; font-size:13px; cursor:pointer; color:var(--text); border-left:3px solid transparent; transition:background .1s; }
+    .browse-folder-item:hover { background:var(--surface2); }
+    .browse-folder-item.active { background:rgba(88,101,242,.12); color:var(--accent); font-weight:600; border-left-color:var(--accent); }
+    .browse-folder-item-count { font-size:11px; color:var(--muted); background:var(--surface3); padding:1px 6px; border-radius:8px; flex-shrink:0; }
+    .browse-folder-item.active .browse-folder-item-count { background:rgba(88,101,242,.2); color:var(--accent); }
+    .browse-content { flex:1; padding:24px; overflow-y:auto; min-width:0; }
+    .browse-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
+    .browse-title { font-size:20px; font-weight:700; }
+    .browse-title span { color:var(--muted); font-size:14px; font-weight:400; margin-left:10px; }
+    .browse-controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .load-progress-bar { height:3px; background:var(--surface3); border-radius:2px; margin-bottom:20px; overflow:hidden; }
+    .load-progress-fill { height:100%; background:var(--accent); border-radius:2px; transition:width .3s ease; }
+    .load-progress-label { font-size:12px; color:var(--muted); margin-bottom:8px; font-family:var(--mono); }
+    .folder-section { margin-bottom:32px; }
+    .folder-heading { font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; }
+    .folder-count { font-size:11px; background:var(--surface3); padding:1px 7px; border-radius:10px; color:var(--muted); }
+    .project-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(300px,1fr)); gap:14px; }
+
+    /* ── Project Card ── */
+    .project-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); cursor:pointer; transition:border-color .15s,transform .1s; display:flex; flex-direction:column; overflow:hidden; }
+    .project-card:hover { border-color:var(--accent); transform:translateY(-1px); }
+    .pc-header { padding:14px 16px 10px; display:flex; flex-direction:column; gap:8px; }
+    .pc-title-row { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+    .pc-name { font-size:14px; font-weight:600; color:var(--text); line-height:1.3; flex:1; }
+    .stage-badge { font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; white-space:nowrap; flex-shrink:0; }
+    .stage-active  { background:rgba(88,101,242,.18); color:var(--blue); }
+    .stage-done    { background:var(--green-bg); color:var(--green); }
+    .stage-blocked { background:var(--red-bg); color:var(--red); }
+    .stage-review  { background:rgba(179,146,240,.15); color:var(--purple); }
+    .stage-default { background:var(--surface3); color:var(--muted); }
+    .pc-progress-wrap { display:flex; flex-direction:column; gap:4px; }
+    .pc-progress-row { display:flex; justify-content:space-between; font-size:11px; }
+    .pc-progress-label { color:var(--muted); }
+    .pc-progress-pct { color:var(--text); font-weight:600; font-family:var(--mono); }
+    .pc-bar-bg { height:5px; background:var(--surface3); border-radius:3px; overflow:hidden; }
+    .pc-bar-fill { height:100%; border-radius:3px; background:var(--green); transition:width .4s ease; }
+    .pc-bar-fill.in-progress { background:var(--accent); }
+    .pc-body { padding:10px 16px 14px; display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--border); flex:1; }
+    .pc-metrics { display:grid; grid-template-columns:1fr 1fr; gap:6px 12px; }
+    .pc-metric { display:flex; flex-direction:column; gap:1px; }
+    .pc-metric-label { font-size:10px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); }
+    .pc-metric-value { font-size:13px; font-weight:500; color:var(--text); }
+    .pc-metric-value.warn { color:var(--yellow); }
+    .pc-metric-value.bad  { color:var(--red); }
+    .pc-metric-value.good { color:var(--green); }
+    .pc-footer { padding:8px 16px; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; font-size:11px; color:var(--muted); }
+    .pc-footer .detail-link { color:var(--accent); font-weight:600; }
+
+    /* ── Stage status dots ── */
+    .stage-dot { width:8px; height:8px; border-radius:50%; display:inline-block; flex-shrink:0; }
+
+    /* ── Search View ── */
+    .search-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:22px; margin-bottom:20px; }
+    .search-panel h2 { font-size:15px; font-weight:600; margin-bottom:14px; }
+    .search-row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+    .field-group.project-name { flex:2; min-width:200px; }
+    .field-group.hourly-rate  { flex:1; min-width:130px; }
+    .field-group .field-input { width:100%; }
+    .selection-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:20px; overflow:hidden; }
+    .selection-header { padding:12px 18px; background:var(--surface2); border-bottom:1px solid var(--border); font-size:13px; font-weight:600; }
+    .project-option { display:flex; align-items:center; justify-content:space-between; padding:12px 18px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .1s; gap:14px; }
+    .project-option:last-child { border-bottom:none; }
+    .project-option:hover { background:var(--surface2); }
+    .project-option-name { font-size:13px; font-weight:500; }
+    .project-option-meta { font-size:12px; color:var(--muted); margin-top:2px; }
+    .badge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:4px; white-space:nowrap; }
+    .badge-arch  { background:rgba(88,101,242,.15); color:var(--blue); }
+    .badge-muted { background:var(--surface3); color:var(--muted); }
+
+    /* ── Detail View ── */
+    .detail-nav { display:flex; align-items:center; gap:12px; margin-bottom:22px; }
+    .breadcrumb { font-size:12px; color:var(--muted); }
+    .breadcrumb a { color:var(--muted); text-decoration:none; }
+    .breadcrumb a:hover { color:var(--text); }
+    .dash-title { font-size:24px; font-weight:700; margin-bottom:6px; }
+    .dash-meta { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+    .dash-meta-item { font-size:13px; color:var(--muted); }
+    .dash-meta-item .highlight { color:var(--text); font-weight:500; }
+    .stage-tag { display:inline-block; font-size:12px; font-weight:600; padding:2px 10px; border-radius:20px; background:rgba(88,101,242,.15); color:var(--blue); }
+
+    /* ── Grid layouts ── */
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+    .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:14px; }
+    .grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:14px; }
+    .grid-1 { margin-bottom:14px; }
+    @media (max-width:700px) { .grid-2,.grid-3 { grid-template-columns:1fr; } }
+
+    /* ── Stat blocks ── */
+    .two-stat { display:grid; grid-template-columns:1fr 1fr; }
+    .two-stat-item { padding:15px; display:flex; flex-direction:column; gap:3px; }
+    .two-stat-item + .two-stat-item { border-left:1px solid var(--border); }
+    .two-stat-label { font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+    .two-stat-value { font-size:22px; font-weight:700; }
+    .two-stat-sub   { font-size:11px; color:var(--muted); }
+    .num-done      { color:var(--green); }
+    .num-remaining { color:var(--yellow); }
+    .stat { display:flex; flex-direction:column; gap:4px; }
+    .stat-label { font-size:12px; color:var(--muted); }
+    .stat-value { font-size:26px; font-weight:700; line-height:1.1; }
+    .stat-sub { font-size:11px; color:var(--muted); }
+    .stat-sub span { color:var(--text); }
+
+    /* ── Progress bars ── */
+    .progress-list { display:flex; flex-direction:column; gap:15px; }
+    .progress-wrap { display:flex; flex-direction:column; gap:5px; }
+    .progress-label-row { display:flex; justify-content:space-between; font-size:12px; }
+    .progress-label-row .label { color:var(--muted); }
+    .progress-label-row .pct { color:var(--text); font-weight:600; font-family:var(--mono); }
+    .progress-bar-bg { height:7px; background:var(--surface3); border-radius:4px; overflow:hidden; }
+    .progress-bar-fill { height:100%; border-radius:4px; transition:width .5s ease; }
+    .fill-green  { background:var(--green); }
+    .fill-yellow { background:var(--yellow); }
+    .fill-blue   { background:var(--accent); }
+    .fill-purple { background:var(--purple); }
+
+    /* ── Dates grid ── */
+    .dates-grid { display:grid; grid-template-columns:repeat(2,1fr); }
+    .date-item { padding:15px; border-right:1px solid var(--border); border-bottom:1px solid var(--border); display:flex; flex-direction:column; gap:3px; }
+    .date-item:nth-child(even) { border-right:none; }
+    .date-item:nth-last-child(-n+2) { border-bottom:none; }
+    .date-label { font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+    .date-value { font-size:14px; font-weight:600; }
+    .date-sub   { font-size:11px; color:var(--muted); }
+
+    /* ── Labor ── */
+    .labor-grid { display:grid; grid-template-columns:repeat(3,1fr); }
+    .labor-item { padding:15px; display:flex; flex-direction:column; gap:3px; border-right:1px solid var(--border); }
+    .labor-item:last-child { border-right:none; }
+    .labor-label { font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+    .labor-value { font-size:20px; font-weight:700; }
+    .labor-sub   { font-size:11px; color:var(--muted); }
+
+    /* ── Stages breakdown ── */
+    .stages-list { display:flex; flex-direction:column; gap:0; }
+    .stage-row {
+      display:grid;
+      grid-template-columns:16px 1fr 110px 110px 90px 120px;
+      gap:12px;
+      align-items:center;
+      padding:11px 15px;
+      border-bottom:1px solid var(--border);
+      font-size:13px;
+      transition:background .1s;
+    }
+    .stage-row:last-child { border-bottom:none; }
+    .stage-row.active-stage { background:rgba(88,101,242,.07); }
+    .stage-row:hover { background:var(--surface2); }
+    .stage-row-header { grid-template-columns:16px 1fr 110px 110px 90px 120px; font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); padding:8px 15px; background:var(--surface2); border-bottom:1px solid var(--border); }
+    .stage-name-cell { display:flex; align-items:center; gap:8px; font-weight:500; }
+    .stage-color-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .stage-status-icon { font-size:14px; line-height:1; }
+    .stage-tasks-cell { display:flex; flex-direction:column; gap:3px; }
+    .stage-mini-bar-bg { height:4px; background:var(--surface3); border-radius:2px; overflow:hidden; margin-top:2px; }
+    .stage-mini-bar-fill { height:100%; border-radius:2px; background:var(--green); }
+    .stage-dur { font-size:12px; color:var(--muted); }
+    .stage-due { font-size:12px; }
+    .stage-due.overdue { color:var(--red); }
+    .stage-due.soon    { color:var(--yellow); }
+    .active-marker { font-size:10px; font-weight:700; background:rgba(88,101,242,.15); color:var(--blue); padding:1px 6px; border-radius:4px; white-space:nowrap; }
+
+    /* ── Team table ── */
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    thead th { text-align:left; font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); padding:8px 12px; border-bottom:1px solid var(--border); }
+    tbody tr { border-bottom:1px solid var(--border); }
+    tbody tr:last-child { border-bottom:none; }
+    tbody tr:hover { background:var(--surface2); }
+    tbody td { padding:9px 12px; vertical-align:middle; }
+    .member-name { display:flex; align-items:center; gap:9px; }
+    .avatar { width:28px; height:28px; border-radius:50%; background:var(--accent); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; flex-shrink:0; }
+    .avatar.unassigned { background:var(--surface3); color:var(--muted); }
+    .mini-bar-wrap { display:flex; align-items:center; gap:7px; }
+    .mini-bar-bg { flex:1; height:5px; background:var(--surface3); border-radius:3px; overflow:hidden; min-width:50px; }
+    .mini-bar-fill { height:100%; border-radius:3px; background:var(--green); }
+    .mini-bar-pct { font-size:11px; color:var(--muted); font-family:var(--mono); width:34px; text-align:right; }
+
+    /* ── Misc ── */
+    ::-webkit-scrollbar { width:6px; height:6px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+    ::-webkit-scrollbar-thumb:hover { background:var(--muted); }
+    .hidden { display:none !important; }
+    .empty-state { text-align:center; padding:48px 24px; color:var(--muted); }
+    .empty-state h3 { font-size:16px; color:var(--text); margin-bottom:8px; }
+
+    /* ── Metadata View ── */
+    .meta-stage-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:14px; overflow:hidden; }
+    .meta-stage-header { padding:12px 16px; background:var(--surface2); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .meta-stage-id { font-family:var(--mono); font-size:11px; color:var(--muted); background:var(--surface3); padding:2px 8px; border-radius:4px; word-break:break-all; }
+    .meta-stage-body { padding:14px 16px; display:flex; flex-direction:column; gap:12px; }
+    .meta-project-list { display:flex; flex-direction:column; gap:5px; }
+    .meta-project-item { font-size:12px; display:flex; align-items:center; gap:8px; }
+    .meta-project-item.is-active { color:var(--text); }
+    .meta-project-item:not(.is-active) { color:var(--muted); }
+    .meta-active-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); flex-shrink:0; }
+    .meta-inactive-dot { width:6px; height:6px; border-radius:50%; background:var(--border); flex-shrink:0; }
+    .meta-name-row { display:flex; align-items:center; gap:8px; }
+    .meta-name-input { flex:1; max-width:320px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px; padding:6px 10px; outline:none; transition:border-color .15s; }
+    .meta-name-input:focus { border-color:var(--accent); }
+    .meta-saved-badge { font-size:11px; color:var(--green); opacity:0; transition:opacity .3s; white-space:nowrap; }
+    .meta-saved-badge.show { opacity:1; }
+    .meta-scope-btn { background:transparent; border:none; border-right:1px solid var(--border); color:var(--muted); font-size:12px; font-weight:600; padding:6px 18px; cursor:pointer; transition:background .15s,color .15s; }
+    .meta-scope-btn:last-child { border-right:none; }
+    .meta-scope-btn:hover { background:var(--surface2); color:var(--text); }
+    .meta-scope-btn.active { background:var(--accent); color:#fff; }
+
+    /* ── Loading overlay ── */
+    #loadingOverlay { position:fixed; inset:0; background:rgba(15,17,23,.82); z-index:200; display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px; }
+    #loadingOverlay.visible { display:flex; }
+    .loading-spinner { width:36px; height:36px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
+    .loading-text { font-size:14px; color:var(--muted); }
+    .loading-step { font-size:11px; color:var(--muted); font-family:var(--mono); opacity:.7; }
+  </style>
+</head>
+<body>
+
+<div id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Loading…</div>
+  <div class="loading-step" id="loadingStep"></div>
+</div>
+
+<header>
+  <div class="logo">Motion <span>Dashboard</span></div>
+  <div class="tab-nav">
+    <button class="tab-btn active" id="tab-browse" onclick="switchTab('browse')">Browse Projects</button>
+    <button class="tab-btn" id="tab-search" onclick="switchTab('search')">Search</button>
+    <button class="tab-btn" id="tab-gantt" onclick="switchTab('gantt')">Gantt</button>
+    <button class="tab-btn" id="tab-meta" onclick="switchTab('meta')">Metadata</button>
+  </div>
+  <a href="/" class="nav-link">API Explorer</a>
+  <div class="api-key-bar">
+    <label for="globalApiKey">API Key</label>
+    <input type="password" id="globalApiKey" class="api-key-input" placeholder="Enter X-API-Key…" autocomplete="off" />
+    <span class="key-status missing" id="keyStatus">Not set</span>
+  </div>
+</header>
+
+<!-- ══ Browse View ══ -->
+<div id="view-browse" class="view active">
+  <div class="browse-layout">
+    <!-- Left folder nav -->
+    <div class="browse-folder-nav">
+      <div class="browse-folder-nav-title">Spacial Services</div>
+      <div id="browseFolderNav"></div>
+    </div>
+    <!-- Right content -->
+    <div class="browse-content">
+      <div class="browse-header">
+        <div class="browse-title" id="browseFolderTitle">Architecture <span id="browseSubtitle"></span></div>
+        <div class="browse-controls">
+          <input type="text" id="browseFilter" class="field-input" placeholder="Filter projects…" style="width:200px" oninput="applyBrowseFilter()" />
+          <button class="btn btn-primary" id="browseLoadBtn" onclick="loadBrowseView()">
+            <div class="spinner" id="browseSpinner"></div>
+            Load Projects
+          </button>
+        </div>
+      </div>
+      <div id="browseProgressWrap" class="hidden">
+        <div class="load-progress-label" id="browseProgressLabel"></div>
+        <div class="load-progress-bar"><div class="load-progress-fill" id="browseProgressFill" style="width:0%"></div></div>
+      </div>
+      <div id="browseAlert"></div>
+      <div id="folderSections"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Search View ══ -->
+<div id="view-search" class="view">
+  <div class="page">
+    <div class="search-panel">
+      <h2>Project Search</h2>
+      <div class="search-row">
+        <div class="field-group project-name">
+          <label for="projectName">Project Name</label>
+          <input type="text" id="projectName" class="field-input" placeholder="Enter project name…" autocomplete="off" />
+        </div>
+        <div class="field-group hourly-rate">
+          <label for="hourlyRate">Hourly Rate ($/hr)</label>
+          <input type="number" id="hourlyRate" class="field-input" placeholder="e.g. 150" min="0" step="0.01" />
+        </div>
+        <button class="btn btn-primary" id="searchBtn" onclick="runSearch()">
+          <div class="spinner" id="searchSpinner"></div>
+          Search
+        </button>
+        <button class="btn btn-ghost" onclick="clearSearch()">Clear</button>
+      </div>
+    </div>
+    <div id="searchAlert"></div>
+    <div id="selectionPanel" class="selection-panel hidden">
+      <div class="selection-header" id="selectionHeader"></div>
+      <div id="selectionList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Detail View ══ -->
+<div id="view-detail" class="view">
+  <div class="page">
+    <div class="detail-nav">
+      <button class="btn btn-back" onclick="goBack()">← Back</button>
+      <div class="breadcrumb" id="detailBreadcrumb"></div>
+      <button class="btn btn-ghost" style="margin-left:auto" onclick="openInGantt()">View in Gantt →</button>
+    </div>
+
+    <div class="dash-title" id="dashTitle">—</div>
+    <div class="dash-meta">
+      <div class="dash-meta-item">Workspace: <span class="highlight" id="dashWorkspace">—</span></div>
+      <div class="dash-meta-item">Folder: <span class="highlight" id="dashFolder">—</span></div>
+      <div class="dash-meta-item">Active Stage: <span class="stage-tag" id="dashStage">—</span></div>
+    </div>
+
+    <!-- Hourly rate inline -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+      <label style="font-size:12px;color:var(--muted);">Hourly Rate ($/hr):</label>
+      <input type="number" id="detailRate" class="field-input" placeholder="e.g. 150" min="0" step="0.01" style="width:140px" oninput="refreshLaborCards()" />
+    </div>
+
+    <!-- Timeline -->
+    <div class="grid-1">
+      <div class="card">
+        <div class="card-header">Project Timeline</div>
+        <div class="dates-grid">
+          <div class="date-item">
+            <div class="date-label">Project Created</div>
+            <div class="date-value" id="dateCreated">—</div>
+            <div class="date-sub" id="dateCreatedAge"></div>
+          </div>
+          <div class="date-item">
+            <div class="date-label">First Task Created</div>
+            <div class="date-value" id="dateFirstTask">—</div>
+            <div class="date-sub" id="dateFirstTaskAge"></div>
+          </div>
+          <div class="date-item">
+            <div class="date-label">Motion Est. Completion</div>
+            <div class="date-value" id="dateEstEnd">—</div>
+            <div class="date-sub" id="dateEstEndNote"></div>
+          </div>
+          <div class="date-item">
+            <div class="date-label">Project Due Date</div>
+            <div class="date-value" id="dateDue">—</div>
+            <div class="date-sub" id="dateDueNote"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Overall task counts + active stage tasks -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header">Overall Task Progress</div>
+        <div class="two-stat">
+          <div class="two-stat-item">
+            <div class="two-stat-label">Completed</div>
+            <div class="two-stat-value num-done" id="totalDone">—</div>
+            <div class="two-stat-sub">tasks finished</div>
+          </div>
+          <div class="two-stat-item">
+            <div class="two-stat-label">Remaining</div>
+            <div class="two-stat-value num-remaining" id="totalRemaining">—</div>
+            <div class="two-stat-sub">tasks to go</div>
+          </div>
+        </div>
+        <div class="card-body" style="padding-top:12px;">
+          <div class="progress-wrap">
+            <div class="progress-label-row">
+              <span class="label">Task completion</span>
+              <span class="pct" id="totalPct">0%</span>
+            </div>
+            <div class="progress-bar-bg"><div class="progress-bar-fill fill-green" id="totalBar" style="width:0%"></div></div>
+            <div class="stat-sub"><span id="totalCount">0</span> total tasks</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          Active Stage Tasks
+          <span class="stage-tag" id="stageTagHeader">—</span>
+        </div>
+        <div class="two-stat">
+          <div class="two-stat-item">
+            <div class="two-stat-label">Completed</div>
+            <div class="two-stat-value num-done" id="stageDone">—</div>
+            <div class="two-stat-sub">in active stage</div>
+          </div>
+          <div class="two-stat-item">
+            <div class="two-stat-label">Remaining</div>
+            <div class="two-stat-value num-remaining" id="stageRemaining">—</div>
+            <div class="two-stat-sub">in active stage</div>
+          </div>
+        </div>
+        <div class="card-body" style="padding-top:12px;">
+          <div class="progress-wrap">
+            <div class="progress-label-row">
+              <span class="label">Stage completion</span>
+              <span class="pct" id="stagePct">0%</span>
+            </div>
+            <div class="progress-bar-bg"><div class="progress-bar-fill fill-blue" id="stageBar" style="width:0%"></div></div>
+            <div class="stat-sub"><span id="stageCount">0</span> tasks in this stage</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Completion metrics -->
+    <div class="grid-1">
+      <div class="card">
+        <div class="card-header">Completion Metrics</div>
+        <div class="card-body">
+          <div class="progress-list">
+            <div class="progress-wrap">
+              <div class="progress-label-row">
+                <span class="label">Calendar time elapsed</span>
+                <span class="pct" id="calendarPct">—</span>
+              </div>
+              <div class="progress-bar-bg"><div class="progress-bar-fill fill-yellow" id="calendarBar" style="width:0%"></div></div>
+              <div class="stat-sub" id="calendarSub"></div>
+            </div>
+            <div class="progress-wrap">
+              <div class="progress-label-row">
+                <span class="label">Duration complete (completed vs total task hours)</span>
+                <span class="pct" id="durationPct">—</span>
+              </div>
+              <div class="progress-bar-bg"><div class="progress-bar-fill fill-purple" id="durationBar" style="width:0%"></div></div>
+              <div class="stat-sub" id="durationSub"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Duration cards -->
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-header">Time Spent to Date</div>
+        <div class="card-body">
+          <div class="stat">
+            <div class="stat-label">Completed task duration</div>
+            <div class="stat-value" id="timeSpent">—</div>
+            <div class="stat-sub" id="timeSpentSub"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">Remaining Task Duration</div>
+        <div class="card-body">
+          <div class="stat">
+            <div class="stat-label">Open task duration</div>
+            <div class="stat-value" id="timeRemaining">—</div>
+            <div class="stat-sub" id="timeRemainingSub"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">Remaining Calendar Time</div>
+        <div class="card-body">
+          <div class="stat">
+            <div class="stat-label">Until projected completion</div>
+            <div class="stat-value" id="calendarRemaining">—</div>
+            <div class="stat-sub" id="calendarRemainingNote"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Labor -->
+    <div class="grid-1">
+      <div class="card">
+        <div class="card-header">Labor Investment</div>
+        <div class="labor-grid">
+          <div class="labor-item">
+            <div class="labor-label">Hours Invested</div>
+            <div class="labor-value" id="hoursSpent">—</div>
+            <div class="labor-sub" id="laborSpentCost"></div>
+          </div>
+          <div class="labor-item">
+            <div class="labor-label">Hours Remaining</div>
+            <div class="labor-value" id="hoursRemaining">—</div>
+            <div class="labor-sub" id="laborRemainingCost"></div>
+          </div>
+          <div class="labor-item">
+            <div class="labor-label">Total Projected</div>
+            <div class="labor-value" id="hoursTotal">—</div>
+            <div class="labor-sub" id="laborTotalCost"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stages breakdown -->
+    <div class="grid-1">
+      <div class="card">
+        <div class="card-header">Stage Breakdown</div>
+        <div id="stagesBreakdown">
+          <div class="stage-row stage-row-header">
+            <div></div>
+            <div>Stage</div>
+            <div>Tasks</div>
+            <div>Duration</div>
+            <div>Due Date</div>
+            <div>Est. Completion</div>
+          </div>
+          <div class="stages-list" id="stagesList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Team table -->
+    <div class="grid-1">
+      <div class="card">
+        <div class="card-header">Team Members</div>
+        <table id="teamTable">
+          <thead>
+            <tr>
+              <th>Member</th>
+              <th>Completed</th>
+              <th>Remaining</th>
+              <th>Total</th>
+              <th>Progress</th>
+              <th>Duration (done / remaining)</th>
+            </tr>
+          </thead>
+          <tbody id="teamBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Gantt View ══ -->
+<div id="view-gantt" class="view">
+  <div class="gantt-page">
+    <!-- Project selector panel -->
+    <div class="gantt-selector" id="ganttSelector">
+      <div class="gantt-selector-header">
+        <span>Projects</span>
+        <button class="btn btn-primary" style="padding:4px 12px;font-size:12px" onclick="addAllToGantt()">Add All</button>
+      </div>
+      <div id="ganttProjectList" class="gantt-project-list">
+        <div style="color:var(--muted);font-size:13px;padding:12px">Load Browse first to see projects.</div>
+      </div>
+    </div>
+
+    <!-- Chart area -->
+    <div class="gantt-chart-area">
+      <div class="gantt-toolbar">
+        <button class="btn btn-back" id="ganttBackBtn" style="display:none;padding:4px 12px;font-size:12px" onclick="ganttGoBack()">← Back to Project</button>
+        <div class="gantt-zoom-btns">
+          <button class="zoom-btn active" id="zoom-month" onclick="setGanttZoom('month')">Month</button>
+          <button class="zoom-btn" id="zoom-week"  onclick="setGanttZoom('week')">Week</button>
+          <button class="zoom-btn" id="zoom-day"   onclick="setGanttZoom('day')">Day</button>
+        </div>
+        <button class="btn btn-ghost" style="padding:4px 12px;font-size:12px" onclick="ganttScrollToToday()">Today</button>
+        <span id="ganttStatus" style="font-size:12px;color:var(--muted);margin-left:8px"></span>
+        <button class="btn btn-primary" id="ganttCommitBtn" style="display:none;margin-left:auto;padding:4px 14px;font-size:12px" onclick="showCommitModal()">Review Changes (<span id="ganttPendingCount">0</span>)</button>
+      </div>
+      <div class="gantt-outer" id="ganttOuter">
+        <div id="ganttInner">
+          <div class="gantt-empty" id="ganttEmpty">Select projects from the panel to build the Gantt.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Metadata View ══ -->
+<div id="view-meta" class="view">
+  <div class="page">
+    <div class="browse-header" style="margin-bottom:16px">
+      <div>
+        <div class="browse-title">Stage Name Mapping</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:4px">Map stage definition IDs to human-readable names. Saved locally and used throughout the app.</div>
+      </div>
+      <div class="browse-controls">
+        <button class="btn btn-ghost" onclick="downloadStageMeta()">↓ Download JSON</button>
+        <label class="btn btn-ghost" style="cursor:pointer">↑ Upload JSON
+          <input type="file" accept=".json" style="display:none" onchange="uploadStageMeta(event)" />
+        </label>
+      </div>
+    </div>
+
+    <!-- Scope selector -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-body">
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Scope</div>
+          <div style="display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden">
+            <button class="meta-scope-btn active" id="scope-btn-workspace" onclick="setMetaScope('workspace')">Workspace</button>
+            <button class="meta-scope-btn" id="scope-btn-folder" onclick="setMetaScope('folder')">Folder</button>
+            <button class="meta-scope-btn" id="scope-btn-project" onclick="setMetaScope('project')">Project</button>
+          </div>
+        </div>
+
+        <div id="meta-fields-workspace" class="meta-scope-fields">
+          <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+            <div class="field-group" style="flex:1;min-width:220px;max-width:420px">
+              <label>Workspace ID</label>
+              <input type="text" id="metaWorkspaceId" class="field-input" placeholder="Enter workspace ID…" style="width:100%" />
+            </div>
+            <button class="btn btn-ghost" onclick="prefillSpacialWs('workspace')">Use Spacial Services</button>
+          </div>
+        </div>
+
+        <div id="meta-fields-folder" class="meta-scope-fields hidden">
+          <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+            <div class="field-group" style="flex:1;min-width:180px;max-width:320px">
+              <label>Folder Name or ID</label>
+              <input type="text" id="metaFolderValue" class="field-input" placeholder="e.g. Architecture" style="width:100%" />
+            </div>
+            <div class="field-group" style="flex:1;min-width:180px;max-width:320px">
+              <label>Workspace ID</label>
+              <input type="text" id="metaFolderWsId" class="field-input" placeholder="Enter workspace ID…" style="width:100%" />
+            </div>
+            <button class="btn btn-ghost" onclick="prefillSpacialWs('folder')">Use Spacial Services</button>
+          </div>
+        </div>
+
+        <div id="meta-fields-project" class="meta-scope-fields hidden">
+          <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+            <div class="field-group" style="flex:1;min-width:220px;max-width:420px">
+              <label>Project ID</label>
+              <input type="text" id="metaProjectId" class="field-input" placeholder="Enter project ID…" style="width:100%" />
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px">
+          <button class="btn btn-primary" id="metaLoadBtn" onclick="loadMetaView()">
+            <div class="spinner" id="metaSpinner"></div>
+            Load Stage IDs
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="metaAlert"></div>
+    <div id="metaContent">
+      <div class="empty-state"><h3>Configure a scope above and click Load Stage IDs</h3></div>
+    </div>
+  </div>
+</div>
+
+<!-- Gantt tooltip -->
+<div id="ganttTooltip" class="gantt-tooltip"></div>
+<div id="ganttDragLabel" class="gantt-drag-label"></div>
+
+<!-- Gantt commit review modal -->
+<div id="ganttCommitOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;width:min(720px,92vw);max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.5)">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
+      <div style="font-size:15px;font-weight:700;color:var(--text)">Review Pending Changes</div>
+      <button onclick="closeCommitModal()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:2px 6px">✕</button>
+    </div>
+    <div id="ganttCommitBody" style="overflow-y:auto;padding:16px 20px;flex:1"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--border)">
+      <button class="btn btn-ghost" onclick="discardPendingChanges()">Discard All</button>
+      <button class="btn btn-primary" id="ganttApplyBtn" onclick="applyPendingChanges()">Apply All Changes</button>
+    </div>
+  </div>
+</div>
+
+<style>
+/* ── Gantt layout ── */
+.gantt-page { display:flex; height:calc(100vh - 60px); overflow:hidden; }
+
+.gantt-selector {
+  width:240px; min-width:240px; background:var(--surface); border-right:1px solid var(--border);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.gantt-selector-header {
+  padding:10px 14px; border-bottom:1px solid var(--border); font-size:12px; font-weight:700;
+  letter-spacing:.08em; text-transform:uppercase; color:var(--muted);
+  display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+}
+.gantt-project-list { overflow-y:auto; flex:1; }
+.gantt-project-item {
+  display:flex; align-items:center; gap:8px; padding:9px 14px;
+  border-bottom:1px solid var(--border); cursor:pointer; font-size:13px;
+  transition:background .1s;
+}
+.gantt-project-item:hover { background:var(--surface2); }
+.gantt-project-item input[type=checkbox] { accent-color:var(--accent); width:14px; height:14px; flex-shrink:0; }
+.gantt-project-item-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.gantt-project-item-folder { font-size:10px; color:var(--muted); }
+
+.gantt-chart-area { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.gantt-toolbar {
+  padding:8px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center;
+  gap:8px; background:var(--surface); flex-shrink:0;
+}
+.gantt-zoom-btns { display:flex; border:1px solid var(--border); border-radius:6px; overflow:hidden; }
+.zoom-btn {
+  background:transparent; border:none; color:var(--muted); font-size:12px; font-weight:600;
+  padding:5px 14px; cursor:pointer; transition:background .15s, color .15s;
+}
+.zoom-btn:hover { background:var(--surface2); color:var(--text); }
+.zoom-btn.active { background:var(--accent); color:#fff; }
+
+.gantt-outer { flex:1; overflow:auto; position:relative; }
+#ganttInner  { position:relative; }
+
+.gantt-empty { display:flex; align-items:center; justify-content:center; height:300px; color:var(--muted); font-size:14px; }
+
+/* ── Gantt rows ── */
+.gantt-header-row {
+  display:flex; position:sticky; top:0; z-index:20;
+  background:var(--surface2); border-bottom:2px solid var(--border);
+}
+.gantt-row { display:flex; border-bottom:1px solid var(--border); }
+.gantt-row:hover { background:rgba(255,255,255,.025); }
+.gantt-row.project-row { background:var(--surface2); }
+.gantt-row.stage-row   { background:var(--surface); }
+.gantt-row.task-row    { background:var(--bg); }
+
+.gantt-label {
+  position:sticky; left:0; z-index:10; flex-shrink:0; width:260px;
+  border-right:1px solid var(--border); display:flex; align-items:center;
+  padding:0 10px; gap:6px; overflow:hidden;
+  background:inherit; /* inherits from row */
+}
+.gantt-label.header-label { background:var(--surface2); font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); }
+.gantt-toggle { cursor:pointer; user-select:none; color:var(--muted); font-size:11px; flex-shrink:0; width:14px; text-align:center; }
+.gantt-toggle:hover { color:var(--text); }
+.gantt-row-name { font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+.project-row .gantt-row-name { font-weight:600; color:var(--text); }
+.stage-row .gantt-row-name   { color:var(--text); padding-left:16px; }
+.task-row .gantt-row-name    { color:var(--muted); font-size:12px; padding-left:32px; }
+
+.gantt-bars { position:relative; flex:1; }
+
+/* ── Bars ── */
+.gantt-bar {
+  position:absolute; border-radius:4px; cursor:pointer;
+  transition:opacity .15s, filter .15s;
+  display:flex; align-items:center; overflow:hidden;
+}
+.gantt-bar:hover { filter:brightness(1.15); }
+.gantt-bar-label { font-size:10px; font-weight:600; color:#fff; padding:0 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none; }
+.gantt-bar.task-bar { cursor: grab; }
+.gantt-bar.task-bar.dragging, .gantt-bar.stage-bar.dragging { cursor: grabbing; opacity: 0.8; box-shadow: 0 2px 12px rgba(0,0,0,0.5); z-index: 10; position: relative; }
+.gantt-bar.stage-bar { cursor: grab; }
+.gantt-bar.gantt-saving { opacity: 0.45; pointer-events: none; }
+.gantt-drag-label { position: fixed; background: var(--surface3); border: 1px solid var(--border); border-radius: 5px; padding: 4px 10px; font-size: 12px; color: var(--text); pointer-events: none; z-index: 2000; display: none; white-space: nowrap; box-shadow: 0 2px 10px rgba(0,0,0,0.35); }
+.gantt-bar.pending-change { outline: 2px solid #f8a34d; outline-offset: 1px; }
+.gantt-commit-section { margin-bottom: 18px; }
+.gantt-commit-section-title { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.gantt-commit-row { display: flex; align-items: baseline; gap: 10px; padding: 7px 10px; border-radius: 6px; font-size: 13px; border: 1px solid var(--border); margin-bottom: 6px; background: var(--surface2); }
+.gantt-commit-row-name { font-weight: 600; color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gantt-commit-row-type { font-size: 11px; color: var(--accent); background: rgba(88,101,242,.15); padding: 2px 7px; border-radius: 10px; flex-shrink: 0; }
+.gantt-commit-row-dates { font-size: 12px; color: var(--muted); flex-shrink: 0; }
+.gantt-commit-row-project { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+.gantt-debug-toggle { font-size: 12px; color: var(--accent); cursor: pointer; user-select: none; margin-top: 4px; display: inline-block; }
+.gantt-debug-toggle:hover { text-decoration: underline; }
+.gantt-debug-block { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-size: 11px; font-family: monospace; color: var(--muted); white-space: pre-wrap; margin-top: 8px; max-height: 300px; overflow-y: auto; line-height: 1.6; }
+
+.project-bar { height:28px; top:6px; opacity:.9; }
+.stage-bar   { height:22px; top:5px; opacity:.92; }
+.task-bar    { height:16px; top:6px; }
+
+/* today line */
+.gantt-today-line {
+  position:absolute; top:0; bottom:0; width:2px;
+  background:rgba(229,72,77,.7); pointer-events:none; z-index:5;
+}
+
+/* grid lines */
+.gantt-grid-line {
+  position:absolute; top:0; bottom:0; width:1px;
+  background:var(--border); opacity:.5; pointer-events:none;
+}
+
+/* header time labels */
+.gantt-time-header { position:relative; flex:1; }
+.gantt-month-label {
+  position:absolute; top:0; height:50%; font-size:11px; font-weight:700;
+  color:var(--text); display:flex; align-items:center; padding-left:8px;
+  border-right:1px solid var(--border); overflow:hidden; white-space:nowrap;
+}
+.gantt-sub-label {
+  position:absolute; bottom:0; height:50%; font-size:10px; color:var(--muted);
+  display:flex; align-items:center; padding-left:4px;
+  border-right:1px solid var(--border); overflow:hidden; white-space:nowrap;
+}
+
+/* ── Tooltip ── */
+.gantt-tooltip {
+  position:fixed; z-index:500; background:var(--surface2); border:1px solid var(--border);
+  border-radius:8px; padding:10px 14px; font-size:12px; line-height:1.6;
+  pointer-events:none; display:none; max-width:280px; box-shadow:0 4px 16px rgba(0,0,0,.4);
+}
+.gantt-tooltip-title { font-weight:700; font-size:13px; color:var(--text); margin-bottom:4px; }
+.gantt-tooltip-row   { display:flex; gap:8px; }
+.gantt-tooltip-label { color:var(--muted); flex-shrink:0; }
+.gantt-tooltip-value { color:var(--text); }
+</style>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  State & constants
+// ════════════════════════════════════════════════════════
+const STORAGE_KEY  = 'motion_api_key';
+const PREFERRED_WS = 'spacial services';
+const ARCH_FOLDER  = 'architecture';
+
+const state = {
+  prevTab: 'browse',
+  wsMap: {},              // workspaceId → workspace object
+  spacialWsId: null,
+  browseProjects: [],
+  browseSelectedFolder: null, // set to arch folder name after first load
+  currentProject: null,
+  currentTasks: [],
+  _doneHrs: 0, _openHrs: 0, _totalHrs: 0,
+  stageDefMap: {},        // stageDefinitionId → stage definition (name, color, …)
+  projectCache: {},       // projectId → rich project (._workspace, ._tasks, stages[]._project, tasks[]._stage/_project)
+  gantt: {
+    selectedProjectIds: new Set(),
+    collapsedProjects: new Set(),
+    collapsedStages: new Set(),
+    zoom: 'week',
+    drag: null,           // active drag state
+    pendingChanges: [],   // staged changes awaiting commit
+  },
+};
+
+// ════════════════════════════════════════════════════════
+//  API Key
+// ════════════════════════════════════════════════════════
+const apiKeyInput = document.getElementById('globalApiKey');
+const keyStatusEl = document.getElementById('keyStatus');
+
+function updateKeyStatus() {
+  const v = apiKeyInput.value.trim();
+  if (v) {
+    localStorage.setItem(STORAGE_KEY, v);
+    keyStatusEl.textContent = 'Saved';
+    keyStatusEl.className = 'key-status saved';
+    if (state.browseProjects.length === 0) loadBrowseView();
+  } else {
+    localStorage.removeItem(STORAGE_KEY);
+    keyStatusEl.textContent = 'Not set';
+    keyStatusEl.className = 'key-status missing';
+  }
+}
+const savedKey = localStorage.getItem(STORAGE_KEY);
+if (savedKey) { apiKeyInput.value = savedKey; keyStatusEl.textContent = 'Saved'; keyStatusEl.className = 'key-status saved'; }
+apiKeyInput.addEventListener('input', updateKeyStatus);
+function getApiKey() { return apiKeyInput.value.trim(); }
+
+// ════════════════════════════════════════════════════════
+//  Motion API helpers
+// ════════════════════════════════════════════════════════
+async function motionGet(path, params = {}) {
+  const qs  = new URLSearchParams(params).toString();
+  const url = `/proxy${path}${qs ? '?' + qs : ''}`;
+  const res = await fetch(url, { headers: { 'X-API-Key': getApiKey() } });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+async function motionPost(path, body = {}) {
+  const url = `/proxy${path}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'X-API-Key': getApiKey(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+async function motionPatch(path, body = {}) {
+  const url = `/proxy${path}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: { 'X-API-Key': getApiKey(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+// Extract array from either v1 or v2 response formats
+function extractList(data, hint) {
+  // v2: { models: { [hint]: { id: obj, ... } } }
+  if (data.models) {
+    const key = hint || Object.keys(data.models)[0];
+    if (data.models[key]) return Object.values(data.models[key]);
+  }
+  // v1 direct array under known keys
+  for (const k of [hint, 'projects', 'tasks', 'workspaces']) {
+    if (k && Array.isArray(data[k])) return data[k];
+  }
+  if (Array.isArray(data)) return data;
+  return [];
+}
+
+function nextCursor(data) {
+  return data.meta?.nextCursor || data.nextCursor || null;
+}
+
+// Paginate GET with query params
+async function motionGetAll(path, params = {}, hint) {
+  const results = []; let cursor = null;
+  do {
+    const p = { ...params }; if (cursor) p.cursor = cursor;
+    const data = await motionGet(path, p);
+    results.push(...extractList(data, hint));
+    cursor = nextCursor(data);
+  } while (cursor);
+  return results;
+}
+
+// Paginate POST query
+async function motionPostAll(path, body = {}, hint) {
+  const results = []; let cursor = null;
+  do {
+    const b = { ...body }; if (cursor) b.cursor = cursor;
+    const data = await motionPost(path, b);
+    results.push(...extractList(data, hint));
+    cursor = nextCursor(data);
+  } while (cursor);
+  return results;
+}
+
+// Fetch all projects for a workspace with folder names resolved.
+// Strategy:
+//   1. GET /v2/folders → build folderId→name map from models.folders
+//   2. GET /v1/projects → project list with IDs (no folder info)
+//   3. GET /v2/projects/{id} in parallel for each → get folderId per project
+//   4. Map folderId to name; folders with null name become "No Folder"
+async function listProjects(workspaceId) {
+  const [folderRes, v1Res] = await Promise.allSettled([
+    motionGet('/v2/folders', { workspaceId }),
+    motionGetAll('/v1/projects', { workspaceId }, 'projects'),
+  ]);
+
+  // Build folderId → name map
+  const folderMap = {};
+  if (folderRes.status === 'fulfilled') {
+    const folders = folderRes.value?.models?.folders || {};
+    Object.values(folders).forEach(f => { if (f.id && f.name) folderMap[f.id] = f.name; });
+  }
+
+  const projects = v1Res.status === 'fulfilled' ? v1Res.value : [];
+  if (!projects.length) return projects;
+
+  // Fetch folderId for each project from v2 in parallel
+  const v2Results = await Promise.allSettled(
+    projects.map(p => motionGet(`/v2/projects/${p.id}`))
+  );
+
+  return projects.map((p, i) => {
+    const v2res = v2Results[i];
+    let folderId = null;
+    if (v2res.status === 'fulfilled' && v2res.value?.models?.projects) {
+      const v2p = Object.values(v2res.value.models.projects)[0];
+      folderId = v2p?.folderId || null;
+    }
+    const folderName = folderId ? (folderMap[folderId] || null) : null;
+    return { ...p, projectFolder: folderName };
+  });
+}
+
+// Fetch single project with full v2 stage data
+async function getProjectV2(projectId) {
+  try {
+    const data = await motionGet(`/v2/projects/${projectId}`);
+    const list = extractList(data, 'projects');
+    return list[0] || data;
+  } catch {
+    return null;
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+//  Unified project loader — single source of truth for all features.
+//
+//  Steps:
+//    1. GET v2 project  → stages[] with taskCount, activeStageDefinitionId, etc.
+//    2. POST v2/tasks/query → tasks with stageDefinitionId (the only API that returns it)
+//    3. Cross-link: every stage gets ._project; every task gets ._stage and ._project
+//    4. Cache in state.projectCache — Browse, Detail, and Gantt all read from here.
+// ────────────────────────────────────────────────────────────
+async function loadProject(projectOrId) {
+  const shell     = typeof projectOrId === 'object' ? projectOrId : null;
+  const projectId = shell ? shell.id : projectOrId;
+
+  if (state.projectCache[projectId]) return state.projectCache[projectId];
+
+  // Step 1 — v2 project (required for stages[], activeStageDefinitionId, task counts)
+  const v2 = await getProjectV2(projectId);
+  const project = v2
+    ? { ...(shell || {}), ...v2, _workspaceName: shell?._workspaceName }
+    : (shell || { id: projectId });
+
+  const wsId = project.workspaceId || state.spacialWsId;
+  project._workspace = wsId ? (state.wsMap[wsId] || null) : null;
+
+  if (wsId) await fetchStageDefinitions(wsId, [project]);
+
+  // Step 2 — fetch tasks.
+  // v1 scopes correctly to the project; v2 returns stageDefinitionId.
+  // Fetch both in parallel and join on task ID so every task is project-scoped with its stage.
+  const [v1Tasks, v2Tasks] = await Promise.all([
+    motionGetAll('/v1/tasks', { projectId, includeAllStatuses: 'true' }, 'tasks'),
+    motionPostAll('/v2/tasks/query', { workspaceId: wsId, includeAllStatuses: true, filters: [] }, 'tasks'),
+  ]);
+  const v2ById = new Map(v2Tasks.map(t => [t.id, t]));
+  const rawTasks = v1Tasks.map(t => ({ ...t, ...v2ById.get(t.id) }));
+
+  // Step 3 — cross-link stages ↔ tasks ↔ project
+  const stageByDefId = {};
+  (project.stages || []).forEach(s => {
+    s._project = project;
+    stageByDefId[s.stageDefinitionId] = s;
+  });
+
+  rawTasks.forEach(t => {
+    t._project = project;
+    t._stage   = stageByDefId[t.stageDefinitionId] || null;
+  });
+
+  project._tasks = rawTasks;
+  state.projectCache[projectId] = project;
+  return project;
+}
+
+// Concurrency pool
+async function pMap(items, fn, limit = 4) {
+  const results = new Array(items.length); let idx = 0;
+  async function worker() { while (idx < items.length) { const i = idx++; results[i] = await fn(items[i], i); } }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
+// ════════════════════════════════════════════════════════
+//  Stage definition fetching & caching
+// ════════════════════════════════════════════════════════
+
+// Returns a stage definition name by ID — user-defined names take priority
+function stageDefName(stageDefinitionId) {
+  if (state.spacialWsId) {
+    const userMeta = JSON.parse(localStorage.getItem(STAGE_META_KEY) || '{}');
+    const name = userMeta[state.spacialWsId]?.[stageDefinitionId];
+    if (name) return name;
+  }
+  return state.stageDefMap[stageDefinitionId]?.name || null;
+}
+
+// Deep-walk any object/array and collect anything that looks like a stage definition
+function deepCollectStageDefs(node, out = {}) {
+  if (!node || typeof node !== 'object') return out;
+  if (Array.isArray(node)) { node.forEach(x => deepCollectStageDefs(x, out)); return out; }
+  // If this node has id + name it might be a stage def
+  if (node.id && node.name && typeof node.name === 'string') out[node.id] = node;
+  Object.values(node).forEach(v => deepCollectStageDefs(v, out));
+  return out;
+}
+
+// Fetch all stage definitions needed for the given projects.
+// Tries template endpoints first (most reliable for named stages), then bulk definitions.
+async function fetchStageDefinitions(workspaceId, projects) {
+  const needed = new Set();
+  projects.forEach(p => (p.stages || []).forEach(s => {
+    if (s.stageDefinitionId && !state.stageDefMap[s.stageDefinitionId]) needed.add(s.stageDefinitionId);
+  }));
+  if (!needed.size) return;
+
+  // Helper: ingest any object response and pull out stage defs
+  function ingest(data) {
+    const candidates = deepCollectStageDefs(data);
+    Object.values(candidates).forEach(d => {
+      if (d?.id && d?.name) { state.stageDefMap[d.id] = d; needed.delete(d.id); }
+    });
+  }
+
+  // 1. Project templates — most likely to have named stage definitions
+  try {
+    const data = await motionGet(`/v1/workspaces/${workspaceId}/templates/projects`);
+    ingest(data);
+  } catch { }
+
+  if (!needed.size) return;
+
+  // 2. v2 definitions/full bulk endpoint
+  try {
+    const data = await motionGet(`/v2/workspaces/${workspaceId}/definitions/full`);
+    ingest(data);
+  } catch { }
+
+  if (!needed.size) return;
+
+  // 3. Individual stage definition fetches for whatever is still missing
+  await pMap([...needed], async (id) => {
+    try {
+      const data = await motionGet(`/v2/workspaces/${workspaceId}/definitions/stages/${id}`);
+      ingest(data);
+    } catch { }
+  }, 5);
+}
+
+// ════════════════════════════════════════════════════════
+//  Stage helpers
+// ════════════════════════════════════════════════════════
+function getActiveStage(project) {
+  if (!project.stages?.length) return null;
+  if (project.activeStageDefinitionId) {
+    return project.stages.find(s => s.stageDefinitionId === project.activeStageDefinitionId) || null;
+  }
+  return project.stages.find(s => !s.completedTime && !s.canceledTime) || project.stages[0] || null;
+}
+
+// Primary stage name: user-defined → definition name → stage ID (never null when stage exists)
+function getStageName(project) {
+  const stage = getActiveStage(project);
+  if (stage?.stageDefinitionId) {
+    const defName = stageDefName(stage.stageDefinitionId);
+    if (defName) return defName;
+    return stage.stageDefinitionId; // fall back to raw ID rather than hiding it
+  }
+  if (stage?.name) return stage.name;
+  return null;
+}
+
+// Name for an individual stage instance (used in breakdown / Gantt)
+function stageInstanceName(stage) {
+  if (stage.stageDefinitionId) {
+    const defName = stageDefName(stage.stageDefinitionId);
+    if (defName) return defName;
+    return stage.stageDefinitionId; // show ID so user knows what to map
+  }
+  return stage.name || '—';
+}
+
+function stageStatus(stage, project) {
+  if (stage.canceledTime) return 'canceled';
+  if (stage.completedTime) return 'completed';
+  if (stage.stageDefinitionId === project.activeStageDefinitionId) return 'active';
+  if (stage.visited) return 'visited';
+  return 'upcoming';
+}
+
+function stageBadgeClass(name) {
+  if (!name) return 'stage-default';
+  const n = name.toLowerCase();
+  if (n.includes('complet') || n.includes('done') || n.includes('finish') || n.includes('close')) return 'stage-done';
+  if (n.includes('block') || n.includes('hold') || n.includes('pause') || n.includes('cancel')) return 'stage-blocked';
+  if (n.includes('review') || n.includes('approv') || n.includes('qa') || n.includes('check')) return 'stage-review';
+  if (n.includes('progress') || n.includes('active') || n.includes('start') || n.includes('build') || n.includes('develop')) return 'stage-active';
+  return 'stage-default';
+}
+
+// ════════════════════════════════════════════════════════
+//  Project data helpers
+// ════════════════════════════════════════════════════════
+function getFolderName(p) {
+  const f = p.projectFolder || p.folder || {};
+  return (typeof f === 'string' ? f : f.name) || 'No Folder';
+}
+function isArchFolder(p) { return getFolderName(p).toLowerCase().includes(ARCH_FOLDER); }
+
+// Returns the earliest future anchor date for a task, or a duration-based estimate from now.
+function taskEffectiveEnd(t, now) {
+  const candidates = [
+    t.scheduledEnd   ? new Date(t.scheduledEnd)   : null,
+    t.scheduledStart && t.duration
+      ? new Date(new Date(t.scheduledStart).getTime() + t.duration * 60000) : null,
+    t.dueDate        ? new Date(t.dueDate)         : null,
+  ].filter(d => d && d > now);
+  if (candidates.length) return candidates.reduce((a, b) => a < b ? a : b);
+  const mins = taskDur(t);
+  return new Date(now.getTime() + Math.ceil((mins > 0 ? mins : 480) / 60 / 8 / 5 * 7) * 86400000);
+}
+
+// Returns { date, bottleneck } for the latest bottleneck assignee across open tasks, or null.
+function workBasedCompletion(openTasks, now) {
+  if (!openTasks.length) return null;
+  const assigneeMap = {};
+  openTasks.forEach(t => {
+    const end = taskEffectiveEnd(t, now);
+    const assignees = t.assignees || (t.assignee ? [t.assignee] : []);
+    const people = assignees.length
+      ? assignees.map(a => ({ key: a.id || a.email || a.name || '?', name: a.name || a.email || 'Unknown' }))
+      : [{ key: '__unassigned__', name: 'Unassigned' }];
+    people.forEach(({ key, name }) => {
+      if (!assigneeMap[key] || end > assigneeMap[key].date)
+        assigneeMap[key] = { name, date: end };
+    });
+  });
+  const completions = Object.values(assigneeMap);
+  if (!completions.length) return null;
+  return completions.reduce((max, e) => e.date > max.date ? e : max);
+}
+
+function isTaskCompleted(t) {
+  if (t.completedTime != null) return true;
+  const s = (t.status?.name || t.status || '').toLowerCase();
+  return s === 'completed' || s === 'done' || s === 'complete';
+}
+
+function taskStatusInfo(task) {
+  if (isTaskCompleted(task)) return { icon: '✓', color: '#3ba55c', label: 'Done' };
+  const now = Date.now();
+  if (task.dueDate && new Date(task.dueDate).getTime() < now) return { icon: '!', color: '#ed4245', label: 'Overdue' };
+  if (task.scheduledStart && new Date(task.scheduledStart).getTime() <= now) return { icon: '►', color: '#5865f2', label: 'In progress' };
+  if (task.scheduledStart) return { icon: '○', color: '#5b8af7', label: 'Scheduled' };
+  return { icon: '○', color: '#8b8fa8', label: 'Pending' };
+}
+function taskDur(t) { return typeof t.duration === 'number' ? t.duration : 0; }
+
+// Aggregate metrics from tasks (used for detail view)
+function computeTaskMetrics(project, tasks) {
+  const done = tasks.filter(isTaskCompleted);
+  const open = tasks.filter(t => !isTaskCompleted(t));
+  const doneMins = done.reduce((s, t) => s + taskDur(t), 0);
+  const openMins = open.reduce((s, t) => s + taskDur(t), 0);
+  const totalMins = doneMins + openMins;
+  const totalPct = tasks.length ? Math.round(done.length / tasks.length * 100) : 0;
+  const durPct   = totalMins ? Math.round(doneMins / totalMins * 100) : 0;
+
+  // Active stage task metrics from project.stages (authoritative) or computed from tasks
+  const activeStage = getActiveStage(project);
+  let stageDone = 0, stageOpen = 0, stageTotal = 0, stagePct = 0;
+  if (activeStage) {
+    // Use project-level stage data if available
+    stageDone  = activeStage.completedTaskCount ?? 0;
+    stageTotal = activeStage.taskCount ?? 0;
+    stageOpen  = stageTotal - stageDone - (activeStage.canceledTaskCount ?? 0);
+    stagePct   = stageTotal ? Math.round(stageDone / stageTotal * 100) : 0;
+  } else {
+    // Fall back: compute from tasks using stageDefinitionId
+    const activeId = project.activeStageDefinitionId;
+    if (activeId) {
+      const stageTasks = tasks.filter(t => t.stageDefinitionId === activeId);
+      stageDone  = stageTasks.filter(isTaskCompleted).length;
+      stageOpen  = stageTasks.filter(t => !isTaskCompleted(t)).length;
+      stageTotal = stageTasks.length;
+      stagePct   = stageTotal ? Math.round(stageDone / stageTotal * 100) : 0;
+    }
+  }
+
+  // Dates from tasks
+  const allDates = tasks.map(t => t.createdAt || t.scheduledStart).filter(Boolean).map(d => new Date(d));
+  const firstTask = allDates.length ? new Date(Math.min(...allDates)) : null;
+  const openDues  = open.map(t => t.dueDate || t.scheduledEnd).filter(Boolean).map(d => new Date(d));
+  const projEnd   = openDues.length ? new Date(Math.max(...openDues)) : null;
+
+  // Team breakdown
+  const memberMap = {};
+  tasks.forEach(t => {
+    const assignees = t.assignees || (t.assignee ? [t.assignee] : []);
+    const isDone = isTaskCompleted(t);
+    const dur = taskDur(t);
+    if (!assignees.length) {
+      const k = '__unassigned__';
+      if (!memberMap[k]) memberMap[k] = { name: 'Unassigned', done: 0, open: 0, doneMins: 0, openMins: 0 };
+      isDone ? (memberMap[k].done++, memberMap[k].doneMins += dur) : (memberMap[k].open++, memberMap[k].openMins += dur);
+    } else {
+      assignees.forEach(a => {
+        const k = a.id || a.email || a.name;
+        if (!memberMap[k]) memberMap[k] = { name: a.name || a.email || k, done: 0, open: 0, doneMins: 0, openMins: 0 };
+        isDone ? (memberMap[k].done++, memberMap[k].doneMins += dur) : (memberMap[k].open++, memberMap[k].openMins += dur);
+      });
+    }
+  });
+
+  return { done, open, doneMins, openMins, totalMins, totalPct, durPct,
+           stageDone, stageOpen, stageTotal, stagePct, firstTask, projEnd, memberMap };
+}
+
+// Project-level aggregate counts (v2 has these on the project itself)
+function projectAggregates(project) {
+  const taskCount      = project.taskCount ?? null;
+  const completedCount = project.completedTaskCount ?? null;
+  const canceledCount  = project.canceledTaskCount ?? 0;
+  const openCount      = taskCount != null && completedCount != null
+    ? taskCount - completedCount - canceledCount : null;
+  const totalPct       = taskCount && completedCount != null
+    ? Math.round(completedCount / taskCount * 100) : null;
+
+  // Duration in minutes (v2 stores in minutes)
+  const totalMins    = project.duration ?? null;
+  const doneMins     = project.completedDuration ?? null;
+  const openMins     = totalMins != null && doneMins != null ? totalMins - doneMins : null;
+  const durPct       = totalMins && doneMins != null ? Math.round(doneMins / totalMins * 100) : null;
+
+  return { taskCount, completedCount, openCount, canceledCount, totalPct, totalMins, doneMins, openMins, durPct };
+}
+
+// ════════════════════════════════════════════════════════
+//  Navigation
+// ════════════════════════════════════════════════════════
+function switchTab(tab) {
+  ['browse','search','gantt','meta'].forEach(t => {
+    document.getElementById(`view-${t}`).classList.toggle('active', t === tab);
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+  });
+  document.getElementById('view-detail').classList.remove('active');
+  if (tab === 'browse') {
+    if (state.browseProjects.length === 0 && getApiKey()) loadBrowseView();
+  }
+  if (tab === 'gantt') {
+    initGanttSelector();
+    document.getElementById('ganttBackBtn').style.display = 'none';
+  }
+  window.scrollTo(0, 0);
+}
+
+function showDetail(project, tasks, fromTab) {
+  state.prevTab = fromTab || 'browse';
+  ['browse','search'].forEach(t => document.getElementById(`view-${t}`).classList.remove('active'));
+  ['browse','search'].forEach(t => document.getElementById(`tab-${t}`).classList.remove('active'));
+  document.getElementById('view-detail').classList.add('active');
+  const crumb = fromTab === 'search' ? 'Search' : 'Browse';
+  document.getElementById('detailBreadcrumb').innerHTML =
+    `<a href="#" onclick="goBack();return false;">${crumb}</a> / <span>${escHtml(project.name)}</span>`;
+  const sr = document.getElementById('hourlyRate').value;
+  if (sr) document.getElementById('detailRate').value = sr;
+  renderDetailView(project, tasks);
+  window.scrollTo(0, 0);
+}
+
+function goBack() {
+  document.getElementById('view-detail').classList.remove('active');
+  document.getElementById(`view-${state.prevTab}`).classList.add('active');
+  document.getElementById(`tab-${state.prevTab}`).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function openInGantt() {
+  if (!state.currentProject) return;
+  switchTab('gantt');
+  document.getElementById('ganttBackBtn').style.display = '';
+  addProjectToGantt(state.currentProject);
+}
+
+function ganttGoBack() {
+  document.getElementById('ganttBackBtn').style.display = 'none';
+  document.getElementById('view-gantt').classList.remove('active');
+  document.getElementById('tab-gantt').classList.remove('active');
+  document.getElementById('view-detail').classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// ════════════════════════════════════════════════════════
+//  Alerts & loading
+// ════════════════════════════════════════════════════════
+function showAlert(areaId, msg, type = 'error') { document.getElementById(areaId).innerHTML = `<div class="alert alert-${type}">${msg}</div>`; }
+function clearAlert(areaId) { document.getElementById(areaId).innerHTML = ''; }
+function setLoading(on, step = '') {
+  document.getElementById('loadingOverlay').classList.toggle('visible', on);
+  document.getElementById('loadingStep').textContent = step;
+}
+function setProgress(pct, label) {
+  document.getElementById('browseProgressFill').style.width = pct + '%';
+  document.getElementById('browseProgressLabel').textContent = label;
+}
+
+// ════════════════════════════════════════════════════════
+//  Browse View
+// ════════════════════════════════════════════════════════
+async function loadBrowseView() {
+  if (!getApiKey()) { showAlert('browseAlert', 'Please enter your API key.'); return; }
+  const btn = document.getElementById('browseLoadBtn'), sp = document.getElementById('browseSpinner');
+  btn.disabled = true; sp.style.display = 'block';
+  clearAlert('browseAlert');
+  document.getElementById('folderSections').innerHTML = '';
+  document.getElementById('browseProgressWrap').classList.remove('hidden');
+  setProgress(0, 'Fetching workspaces…');
+
+  try {
+    // Workspaces
+    const wsList = await motionGetAll('/v1/workspaces', {}, 'workspaces');
+    wsList.forEach(w => { state.wsMap[w.id] = w; });
+
+    const spacialWs = wsList.find(w => w.name.toLowerCase().includes(PREFERRED_WS));
+    if (!spacialWs) {
+      showAlert('browseAlert', `No workspace matching "${PREFERRED_WS}". Found: ${wsList.map(w=>w.name).join(', ')}`, 'warning');
+      return;
+    }
+    state.spacialWsId = spacialWs.id;
+
+    // Projects
+    setProgress(10, `Loading projects from "${spacialWs.name}"…`);
+    const projects = await listProjects(spacialWs.id);
+    projects.forEach(p => { p._workspaceName = spacialWs.name; });
+    state.browseProjects = projects;
+
+    // Default to Architecture folder on first load
+    if (!state.browseSelectedFolder) {
+      const archFolder = projects.map(getFolderName).find(f => f.toLowerCase().includes(ARCH_FOLDER));
+      state.browseSelectedFolder = archFolder || null;
+    }
+
+    setProgress(30, 'Fetching stage definitions…');
+    await fetchStageDefinitions(spacialWs.id, projects);
+    setProgress(80, 'Rendering…');
+    renderBrowseFolderNav(projects);
+    renderBrowseFolders(projects);
+    setProgress(100, `${projects.length} projects loaded`);
+    setTimeout(() => document.getElementById('browseProgressWrap').classList.add('hidden'), 1200);
+
+  } catch (err) {
+    showAlert('browseAlert', `Error: ${err.message}`);
+  } finally {
+    btn.disabled = false; sp.style.display = 'none';
+  }
+}
+
+function renderBrowseFolderNav(projects) {
+  const nav = document.getElementById('browseFolderNav');
+  if (!nav) return;
+
+  // Build folder list with counts
+  const folderMap = {};
+  projects.forEach(p => {
+    const f = getFolderName(p);
+    folderMap[f] = (folderMap[f] || 0) + 1;
+  });
+
+  // Sort: Architecture first, then alpha; No Folder last
+  const folders = Object.keys(folderMap).sort((a, b) => {
+    if (a.toLowerCase().includes(ARCH_FOLDER)) return -1;
+    if (b.toLowerCase().includes(ARCH_FOLDER)) return 1;
+    if (a === 'No Folder') return 1;
+    if (b === 'No Folder') return -1;
+    return a.localeCompare(b);
+  });
+
+  nav.innerHTML = folders.map(f => `
+    <div class="browse-folder-item${state.browseSelectedFolder === f ? ' active' : ''}"
+         onclick="selectBrowseFolder('${escHtml(f).replace(/'/g, "\\'")}')">
+      <span>${escHtml(f)}</span>
+      <span class="browse-folder-item-count">${folderMap[f]}</span>
+    </div>
+  `).join('');
+}
+
+function selectBrowseFolder(folderName) {
+  state.browseSelectedFolder = folderName;
+  renderBrowseFolderNav(state.browseProjects);
+  renderBrowseFolders(state.browseProjects);
+}
+
+function renderBrowseFolders(projects) {
+  const container = document.getElementById('folderSections');
+  container.innerHTML = '';
+
+  const selected = state.browseSelectedFolder;
+  const display = selected ? projects.filter(p => getFolderName(p) === selected) : projects;
+
+  const titleEl = document.getElementById('browseFolderTitle');
+  if (titleEl) titleEl.firstChild.textContent = selected || 'All Projects';
+
+  const sub = document.getElementById('browseSubtitle');
+  if (sub) sub.textContent = `${display.length} project${display.length !== 1 ? 's' : ''}`;
+
+  if (!display.length) {
+    container.innerHTML = `<div class="empty-state"><h3>No Projects Found</h3></div>`;
+    return;
+  }
+
+  // When a single folder is selected show cards directly (no sub-heading needed)
+  // When showing all, group by folder
+  if (selected) {
+    const sec = document.createElement('div');
+    sec.className = 'folder-section';
+    sec.dataset.folder = selected;
+    const grid = document.createElement('div');
+    grid.className = 'project-grid';
+    display.forEach(p => grid.appendChild(buildProjectCard(p)));
+    sec.appendChild(grid);
+    container.appendChild(sec);
+  } else {
+    const folderMap = {};
+    display.forEach(p => { const f = getFolderName(p); (folderMap[f] = folderMap[f] || []).push(p); });
+    const folders = Object.keys(folderMap).sort((a, b) => {
+      if (a.toLowerCase().includes(ARCH_FOLDER)) return -1;
+      if (b.toLowerCase().includes(ARCH_FOLDER)) return 1;
+      if (a === 'No Folder') return 1;
+      if (b === 'No Folder') return -1;
+      return a.localeCompare(b);
+    });
+    folders.forEach(folder => {
+      const ps = folderMap[folder];
+      const sec = document.createElement('div');
+      sec.className = 'folder-section';
+      sec.dataset.folder = folder;
+      sec.innerHTML = `<div class="folder-heading">${escHtml(folder)}<span class="folder-count">${ps.length}</span></div>
+        <div class="project-grid"></div>`;
+      container.appendChild(sec);
+      ps.forEach(p => sec.querySelector('.project-grid').appendChild(buildProjectCard(p)));
+    });
+  }
+}
+
+function buildProjectCard(project) {
+  const card = document.createElement('div');
+  card.className = 'project-card';
+  card.dataset.name = project.name;
+  card.dataset.projectId = project.id;
+  card.addEventListener('click', () => openProjectDetail(project, 'browse'));
+  card.innerHTML = buildCardInner(project);
+  return card;
+}
+
+function buildCardInner(project) {
+  const stageName = getStageName(project);
+  const badgeCls  = stageBadgeClass(stageName);
+  const agg       = projectAggregates(project);
+  const due       = project.dueDate ? new Date(project.dueDate) : null;
+  const estEnd    = project.estimatedCompletionTime ? new Date(project.estimatedCompletionTime) : null;
+  const now       = new Date();
+
+  // Due date display
+  let dueLabel = 'No due date', dueCls = '';
+  if (due) {
+    const d = Math.ceil((due - now) / 86400000);
+    if (d < 0)       { dueLabel = `${Math.abs(d)}d overdue`; dueCls = 'bad'; }
+    else if (d === 0){ dueLabel = 'Due today'; dueCls = 'warn'; }
+    else if (d <= 14){ dueLabel = `Due in ${d}d`; dueCls = d <= 7 ? 'warn' : ''; }
+    else             { dueLabel = `Due ${fmtDate(due)}`; }
+  }
+
+  // Deadline/schedule status from v2
+  const dlStatus = project.deadlineStatus || project.scheduledStatus || '';
+  let statusBadge = '';
+  if (dlStatus.toLowerCase().includes('behind') || dlStatus.toLowerCase().includes('late'))
+    statusBadge = `<span style="font-size:10px;color:var(--red);">⚠ ${escHtml(dlStatus)}</span>`;
+  else if (dlStatus.toLowerCase().includes('risk'))
+    statusBadge = `<span style="font-size:10px;color:var(--yellow);">⚠ ${escHtml(dlStatus)}</span>`;
+
+  const pct         = agg.totalPct ?? 0;
+  const taskLine    = agg.taskCount != null
+    ? `${agg.completedCount} done / ${agg.openCount} remaining`
+    : 'Load for task data';
+  const durLine     = agg.durPct != null ? `${agg.durPct}% of hours done` : '—';
+  const estEndLine  = estEnd ? fmtDate(estEnd) : (due ? fmtDate(due) : '—');
+  const barPartial  = pct > 0 && pct < 100 ? 'in-progress' : '';
+
+  // Stage progress from project.stages
+  const activeStage = getActiveStage(project);
+  let stageTaskLine = '';
+  if (activeStage?.taskCount != null) {
+    const sDone = activeStage.completedTaskCount ?? 0;
+    const sTotal = activeStage.taskCount;
+    stageTaskLine = `${sDone}/${sTotal} stage tasks`;
+  }
+
+  return `
+    <div class="pc-header">
+      <div class="pc-title-row">
+        <div class="pc-name">${escHtml(project.name)}</div>
+        ${stageName ? `<span class="stage-badge ${badgeCls}">${escHtml(stageName)}</span>` : ''}
+      </div>
+      <div class="pc-progress-wrap">
+        <div class="pc-progress-row">
+          <span class="pc-progress-label">Task completion</span>
+          <span class="pc-progress-pct">${agg.totalPct != null ? pct + '%' : '—'}</span>
+        </div>
+        <div class="pc-bar-bg">
+          <div class="pc-bar-fill ${barPartial}" style="width:${pct}%"></div>
+        </div>
+      </div>
+    </div>
+    <div class="pc-body">
+      <div class="pc-metrics">
+        <div class="pc-metric">
+          <div class="pc-metric-label">Tasks</div>
+          <div class="pc-metric-value">${taskLine}</div>
+        </div>
+        <div class="pc-metric">
+          <div class="pc-metric-label">Due / Est. End</div>
+          <div class="pc-metric-value ${dueCls}">${escHtml(dueLabel)}</div>
+        </div>
+        <div class="pc-metric">
+          <div class="pc-metric-label">Hours done</div>
+          <div class="pc-metric-value">${durLine}</div>
+        </div>
+        <div class="pc-metric">
+          <div class="pc-metric-label">Motion est.</div>
+          <div class="pc-metric-value">${estEndLine}</div>
+        </div>
+        ${stageTaskLine ? `<div class="pc-metric" style="grid-column:1/-1"><div class="pc-metric-label">Active Stage Progress</div><div class="pc-metric-value">${stageTaskLine}</div></div>` : ''}
+        ${statusBadge ? `<div class="pc-metric" style="grid-column:1/-1">${statusBadge}</div>` : ''}
+      </div>
+    </div>
+    <div class="pc-footer">
+      <span>${escHtml(getFolderName(project))}</span>
+      <span class="detail-link">View Details →</span>
+    </div>
+  `;
+}
+
+function applyBrowseFilter() {
+  const q = document.getElementById('browseFilter').value.toLowerCase();
+  document.querySelectorAll('.project-card').forEach(c => {
+    c.style.display = (!q || c.dataset.name.toLowerCase().includes(q)) ? '' : 'none';
+  });
+  document.querySelectorAll('.folder-section').forEach(s => {
+    const visible = [...s.querySelectorAll('.project-card')].some(c => c.style.display !== 'none');
+    s.style.display = visible ? '' : 'none';
+  });
+}
+
+async function openProjectDetail(project, fromTab) {
+  setLoading(true, `Loading "${project.name}"…`);
+  try {
+    const rich = await loadProject(project);
+    state.currentProject = rich;
+    state.currentTasks   = rich._tasks;
+    showDetail(rich, rich._tasks, fromTab);
+  } catch (err) {
+    showAlert('browseAlert', `Failed to load project: ${err.message}`);
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  Search View
+// ════════════════════════════════════════════════════════
+async function runSearch() {
+  if (!getApiKey()) { showAlert('searchAlert', 'Please enter your API key.'); return; }
+  const name = document.getElementById('projectName').value.trim();
+  if (!name) { showAlert('searchAlert', 'Please enter a project name.'); return; }
+
+  clearAlert('searchAlert');
+  document.getElementById('selectionPanel').classList.add('hidden');
+  const btn = document.getElementById('searchBtn'), sp = document.getElementById('searchSpinner');
+  btn.disabled = true; sp.style.display = 'block';
+  setLoading(true, 'Fetching workspaces…');
+
+  try {
+    const wsList = await motionGetAll('/v1/workspaces', {}, 'workspaces');
+    wsList.forEach(w => { state.wsMap[w.id] = w; });
+    const preferred = wsList.find(w => w.name.toLowerCase().includes(PREFERRED_WS));
+    const others    = wsList.filter(w => !w.name.toLowerCase().includes(PREFERRED_WS));
+    const nameLower = name.toLowerCase();
+    let found = [];
+
+    for (const ws of (preferred ? [preferred, ...others] : wsList)) {
+      setLoading(true, `Searching "${ws.name}"…`);
+      const projects = await listProjects(ws.id);
+      const matches  = projects.filter(p => p.name.toLowerCase().includes(nameLower));
+      matches.forEach(p => { p._workspaceName = ws.name; });
+      found.push(...matches);
+      if (ws === preferred && found.some(isArchFolder)) break;
+    }
+
+    if (!found.length) { showAlert('searchAlert', `No projects matching "${name}" found.`, 'warning'); return; }
+
+    const archMatches = found.filter(isArchFolder);
+    const candidates  = archMatches.length ? archMatches : found;
+
+    if (candidates.length === 1) {
+      await openProjectDetail(candidates[0], 'search');
+    } else {
+      showSearchSelection(candidates, archMatches.length > 0);
+    }
+  } catch (err) {
+    showAlert('searchAlert', `Error: ${err.message}`);
+  } finally {
+    setLoading(false); btn.disabled = false; sp.style.display = 'none';
+  }
+}
+
+function showSearchSelection(candidates, isArch) {
+  const panel = document.getElementById('selectionPanel');
+  document.getElementById('selectionHeader').textContent =
+    isArch ? `${candidates.length} Architecture projects found — select one:`
+           : `${candidates.length} projects matched — select one:`;
+  const list = document.getElementById('selectionList');
+  list.innerHTML = '';
+  candidates.forEach(p => {
+    const stageName = getStageName(p) || '—';
+    const div = document.createElement('div');
+    div.className = 'project-option';
+    div.innerHTML = `
+      <div>
+        <div class="project-option-name">${escHtml(p.name)}</div>
+        <div class="project-option-meta">${escHtml(p._workspaceName||'')} · ${escHtml(getFolderName(p))}${p.dueDate?' · Due '+fmtDate(p.dueDate):''}</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        ${isArchFolder(p)?'<span class="badge badge-arch">Architecture</span>':''}
+        <span class="badge badge-muted">${escHtml(stageName)}</span>
+      </div>`;
+    div.addEventListener('click', () => { panel.classList.add('hidden'); openProjectDetail(p, 'search'); });
+    list.appendChild(div);
+  });
+  panel.classList.remove('hidden');
+}
+
+function clearSearch() {
+  document.getElementById('projectName').value = '';
+  document.getElementById('hourlyRate').value  = '';
+  clearAlert('searchAlert');
+  document.getElementById('selectionPanel').classList.add('hidden');
+}
+
+// ════════════════════════════════════════════════════════
+//  Detail View
+// ════════════════════════════════════════════════════════
+function renderDetailView(project, tasks) {
+  const m      = computeTaskMetrics(project, tasks);
+  const agg    = projectAggregates(project);
+  const wsName = project._workspaceName || state.wsMap[project.workspaceId]?.name || project.workspaceId || '—';
+  const activeStage = getActiveStage(project);
+  const stageName   = getStageName(project) || 'No Stage';
+
+  setEl('dashTitle',     project.name);
+  setEl('dashWorkspace', wsName);
+  setEl('dashFolder',    getFolderName(project));
+  setEl('dashStage',     stageName);
+  setEl('stageTagHeader', stageName);
+
+  // Timeline dates
+  const created = project.createdTime ? new Date(project.createdTime) : (project.createdAt ? new Date(project.createdAt) : null);
+  const dueDate = project.dueDate ? new Date(project.dueDate) : null;
+  const estEnd  = project.estimatedCompletionTime ? new Date(project.estimatedCompletionTime) : null;
+  const now     = new Date();
+
+  setEl('dateCreated',    created ? fmtDate(created) : '—');
+  setEl('dateCreatedAge', created ? `${daysSince(created)} days ago` : '');
+  setEl('dateFirstTask',  m.firstTask ? fmtDate(m.firstTask) : '—');
+  setEl('dateFirstTaskAge', m.firstTask ? `${daysSince(m.firstTask)} days ago` : '');
+  // dateEstEnd populated below after projEnd is computed
+  setEl('dateDue',        dueDate ? fmtDate(dueDate) : 'Not set');
+  if (dueDate) {
+    const d = Math.ceil((dueDate - now) / 86400000);
+    setEl('dateDueNote', d < 0 ? `${Math.abs(d)} days overdue` : `${d} days remaining`);
+  } else setEl('dateDueNote', '');
+
+  // Task counts — prefer v2 project aggregates, fall back to computed from tasks
+  const doneCount  = agg.completedCount ?? m.done.length;
+  const openCount  = agg.openCount      ?? m.open.length;
+  const totalCount = agg.taskCount      ?? tasks.length;
+  const totalPct   = totalCount ? Math.round(doneCount / totalCount * 100) : 0;
+  setEl('totalDone', doneCount); setEl('totalRemaining', openCount);
+  setEl('totalPct', totalPct + '%'); setEl('totalCount', totalCount);
+  setBar('totalBar', totalPct);
+
+  // Active stage counts — from project.stages if available
+  const stageDone  = activeStage?.completedTaskCount ?? m.stageDone;
+  const stageTotal = activeStage?.taskCount         ?? m.stageTotal;
+  const stageOpen  = stageTotal - stageDone - (activeStage?.canceledTaskCount ?? 0);
+  const stagePct   = stageTotal ? Math.round(stageDone / stageTotal * 100) : 0;
+  setEl('stageDone', stageDone); setEl('stageRemaining', stageOpen);
+  setEl('stagePct', stagePct + '%'); setEl('stageCount', stageTotal);
+  setBar('stageBar', stagePct);
+
+  // Calendar %
+  const startRef = created || m.firstTask;
+  const endRef   = dueDate || estEnd;
+  let calPct = null, calSub = '';
+  if (startRef && endRef) {
+    const total = endRef - startRef, elapsed = now - startRef;
+    if (total > 0) {
+      calPct = Math.min(100, Math.max(0, Math.round(elapsed / total * 100)));
+      calSub = `${Math.round(elapsed/86400000)} of ${Math.round(total/86400000)} calendar days elapsed`;
+    }
+  }
+  setEl('calendarPct', calPct != null ? calPct + '%' : 'N/A');
+  setBar('calendarBar', calPct || 0);
+  setEl('calendarSub', calSub);
+
+  // Duration % — prefer v2 project aggregates
+  const doneMins  = agg.doneMins  ?? m.doneMins;
+  const openMins  = agg.openMins  ?? m.openMins;
+  const totalMins = agg.totalMins ?? m.totalMins;
+  const durPct    = totalMins ? Math.round(doneMins / totalMins * 100) : 0;
+  setEl('durationPct', durPct + '%');
+  setBar('durationBar', durPct);
+  setEl('durationSub', `${fmtHrMin(doneMins)} completed of ${fmtHrMin(totalMins)} total`);
+
+  // Duration cards
+  setEl('timeSpent',    fmtHrMin(doneMins));
+  setEl('timeSpentSub', doneMins ? `${Math.round(doneMins).toLocaleString()} minutes` : 'No duration data');
+  setEl('timeRemaining',    fmtHrMin(openMins));
+  setEl('timeRemainingSub', openMins ? `${Math.round(openMins).toLocaleString()} minutes` : 'No duration data');
+
+  // Calendar remaining
+  const projEnd = estEnd || m.projEnd;
+  let calRemLabel = '—', calRemNote = '';
+  if (projEnd && projEnd > now) {
+    const d = Math.ceil((projEnd - now) / 86400000);
+    calRemLabel = `${d} day${d !== 1 ? 's' : ''}`;
+    calRemNote  = `Est. ${fmtDate(projEnd)}`;
+    if (dueDate) {
+      const diff = Math.round((projEnd - dueDate) / 86400000);
+      calRemNote += diff > 0 ? ` (${diff}d past due)` : diff < 0 ? ` (${Math.abs(diff)}d ahead)` : ' (on schedule)';
+    }
+  } else if (dueDate && dueDate > now) {
+    const d = Math.ceil((dueDate - now) / 86400000);
+    calRemLabel = `${d} day${d !== 1 ? 's' : ''}`;
+    calRemNote  = `Based on due date`;
+  } else if (openCount === 0) {
+    calRemLabel = 'Complete'; calRemNote = 'No remaining tasks';
+  }
+  setEl('calendarRemaining', calRemLabel);
+  setEl('calendarRemainingNote', calRemNote);
+
+  // Project timeline Est. Completion — same source as Remaining Calendar Time
+  if (projEnd) {
+    setEl('dateEstEnd', fmtDate(projEnd));
+    setEl('dateEstEndNote', estEnd ? 'Motion scheduler estimate' : 'Based on latest task due date');
+  } else {
+    setEl('dateEstEnd', '—');
+    setEl('dateEstEndNote', '');
+  }
+
+  const openTasks = tasks.filter(t => !isTaskCompleted(t));
+  const wb = workBasedCompletion(openTasks, now);
+  if (wb) {
+    const calDaysOut = Math.max(0, Math.ceil((wb.date - now) / 86400000));
+    setEl('workEstDate', fmtDate(wb.date));
+    setEl('workEstSub',  `${calDaysOut} calendar day${calDaysOut !== 1 ? 's' : ''} · bottleneck: ${wb.name}`);
+  } else if (openCount === 0) {
+    setEl('workEstDate', 'Complete');
+    setEl('workEstSub',  'No remaining tasks');
+  } else {
+    setEl('workEstDate', 'N/A');
+    setEl('workEstSub',  'No tasks found');
+  }
+
+  // Labor
+  state._doneHrs  = doneMins / 60;
+  state._openHrs  = openMins / 60;
+  state._totalHrs = totalMins / 60;
+  refreshLaborCards();
+
+  // Stages breakdown
+  renderStagesBreakdown(project);
+
+  // Team table
+  const tbody = document.getElementById('teamBody');
+  tbody.innerHTML = '';
+  Object.entries(m.memberMap)
+    .sort((a, b) => (b[1].done + b[1].open) - (a[1].done + a[1].open))
+    .forEach(([key, mem]) => {
+      const total = mem.done + mem.open;
+      const pct   = total ? Math.round(mem.done / total * 100) : 0;
+      const isUn  = key === '__unassigned__';
+      const init  = isUn ? '?' : (mem.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><div class="member-name"><div class="avatar ${isUn?'unassigned':''}">${init}</div><span>${escHtml(mem.name)}</span></div></td>
+        <td class="num-done">${mem.done}</td>
+        <td class="num-remaining">${mem.open}</td>
+        <td>${total}</td>
+        <td><div class="mini-bar-wrap"><div class="mini-bar-bg"><div class="mini-bar-fill" style="width:${pct}%"></div></div><div class="mini-bar-pct">${pct}%</div></div></td>
+        <td style="color:var(--muted);font-size:12px">${fmtHrMin(mem.doneMins)} done / ${fmtHrMin(mem.openMins)} remaining</td>`;
+      tbody.appendChild(tr);
+    });
+}
+
+function renderStagesBreakdown(project) {
+  const list = document.getElementById('stagesList');
+  list.innerHTML = '';
+  const stages = project.stages;
+  if (!stages?.length) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px;">No stage data available for this project</div>';
+    return;
+  }
+
+  const now = new Date();
+  // prevFloor advances sequentially: each stage can't start until the prior stage completes.
+  let prevFloor = now;
+  stages
+    .slice()
+    .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0))
+    .forEach(stage => {
+      const status     = stageStatus(stage, project);
+      const isActive   = status === 'active';
+      const doneCount  = stage.completedTaskCount ?? 0;
+      const totalCount = stage.taskCount ?? 0;
+      const openCount  = totalCount - doneCount - (stage.canceledTaskCount ?? 0);
+      const pct        = totalCount ? Math.round(doneCount / totalCount * 100) : 0;
+      const doneMins   = stage.completedDuration ?? 0;
+      const totalMins  = stage.duration ?? 0;
+
+      const statusIcon =
+        status === 'canceled'  ? '✕' :
+        status === 'completed' ? '✓' :
+        status === 'active'    ? '▶' : '○';
+      const statusColor =
+        status === 'canceled'  ? 'var(--red)' :
+        status === 'completed' ? 'var(--green)' :
+        status === 'active'    ? 'var(--blue)' : 'var(--muted)';
+
+      // Stage color dot
+      const colorMap = {
+        RED:'#e5484d', BLUE:'#79b8ff', GREEN:'#3ba55c', YELLOW:'#e5a94e',
+        PURPLE:'#b392f0', ORANGE:'#f8a34d', PINK:'#f26fad', CYAN:'#2dd4bf',
+        GRAY:'#8b8fa8', DARK:'#22263a',
+      };
+      const dotColor = colorMap[(stage.color||'').toUpperCase()] || 'var(--accent)';
+
+      // Due date
+      let dueLabel = '—', dueCls = '';
+      if (stage.dueDate) {
+        const d = Math.ceil((new Date(stage.dueDate) - now) / 86400000);
+        if (status === 'completed' || status === 'canceled') {
+          dueLabel = fmtDate(stage.dueDate);
+        } else if (d < 0)  { dueLabel = `${Math.abs(d)}d overdue`; dueCls = 'overdue'; }
+        else if (d <= 7)   { dueLabel = `In ${d}d`; dueCls = 'soon'; }
+        else               { dueLabel = fmtDate(stage.dueDate); }
+      }
+
+      // Work-based completion for this stage (sequential: can't start until prevFloor)
+      const stageTasks = (project._tasks || []).filter(
+        t => !isTaskCompleted(t) && t._stage?.stageDefinitionId === stage.stageDefinitionId
+      );
+      let estLabel = '—', estTitle = '';
+      if (status === 'completed' || status === 'canceled') {
+        // Advance floor to when this stage actually finished
+        if (stage.completedTime) prevFloor = new Date(Math.max(prevFloor, new Date(stage.completedTime)));
+      } else {
+        const wb = workBasedCompletion(stageTasks, prevFloor);
+        if (stageTasks.length === 0 && openCount === 0) {
+          estLabel = 'Complete';
+        } else if (wb) {
+          estLabel = fmtDate(wb.date);
+          estTitle = `after prev stage · bottleneck: ${wb.name}`;
+          prevFloor = wb.date;
+        }
+      }
+
+      const row = document.createElement('div');
+      row.className = `stage-row${isActive ? ' active-stage' : ''}`;
+      row.innerHTML = `
+        <div style="color:${statusColor};font-size:13px;text-align:center">${statusIcon}</div>
+        <div class="stage-name-cell">
+          <div class="stage-color-dot" style="background:${dotColor}"></div>
+          <span>${escHtml(stageInstanceName(stage))}</span>
+          ${isActive ? '<span class="active-marker">ACTIVE</span>' : ''}
+        </div>
+        <div class="stage-tasks-cell">
+          <span style="font-size:12px"><span style="color:var(--green)">${doneCount}</span> / ${totalCount} done</span>
+          <div class="stage-mini-bar-bg"><div class="stage-mini-bar-fill" style="width:${pct}%"></div></div>
+        </div>
+        <div class="stage-dur">${fmtHrMin(doneMins)} / ${fmtHrMin(totalMins)}</div>
+        <div class="stage-due ${dueCls}">${dueLabel}</div>
+        <div class="stage-dur" title="${escHtml(estTitle)}">${estLabel}</div>
+      `;
+      list.appendChild(row);
+    });
+}
+
+function refreshLaborCards() {
+  const rate = parseFloat(document.getElementById('detailRate').value) || null;
+  const dh = state._doneHrs, oh = state._openHrs, th = state._totalHrs;
+  setEl('hoursSpent',     `${dh.toFixed(1)} hr`);
+  setEl('hoursRemaining', `${oh.toFixed(1)} hr`);
+  setEl('hoursTotal',     `${th.toFixed(1)} hr`);
+  if (rate) {
+    setEl('laborSpentCost',     `$${fmt$(dh * rate)} invested`);
+    setEl('laborRemainingCost', `$${fmt$(oh * rate)} to go`);
+    setEl('laborTotalCost',     `$${fmt$(th * rate)} total`);
+  } else {
+    ['laborSpentCost','laborRemainingCost','laborTotalCost']
+      .forEach(id => setEl(id, 'Enter rate above for $'));
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  Utilities
+// ════════════════════════════════════════════════════════
+function setEl(id, val) { const e = document.getElementById(id); if (e) e.textContent = val; }
+function setBar(id, pct) { const e = document.getElementById(id); if (e) e.style.width = Math.min(100, Math.max(0, pct)) + '%'; }
+function fmtDate(d) { return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function daysSince(d) { return Math.floor((new Date() - new Date(d)) / 86400000); }
+function fmtHrMin(mins) {
+  if (!mins) return '0 hr';
+  const h = Math.floor(mins/60), m = Math.round(mins%60);
+  if (h===0) return `${m} min`; if (m===0) return `${h} hr`; return `${h}h ${m}m`;
+}
+function fmt$(n) { return n.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function slugify(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g,'-'); }
+
+// ════════════════════════════════════════════════════════
+//  Gantt — constants & helpers
+// ════════════════════════════════════════════════════════
+const GANTT_PX = { month: 3, week: 12, day: 40 };   // px per day
+const GANTT_ROW_H = { project: 40, stage: 32, task: 28 };
+const GANTT_LABEL_W = 260;
+
+const STAGE_COLORS = {
+  RED:'#c0392b', ORANGE:'#e67e22', YELLOW:'#f1c40f', GREEN:'#27ae60',
+  BLUE:'#2980b9', PURPLE:'#8e44ad', PINK:'#e91e8c', CYAN:'#16a085',
+  GRAY:'#7f8c8d', DARK:'#34495e', LIGHT_BLUE:'#3498db', LIGHT_GREEN:'#2ecc71',
+  LIGHT_PURPLE:'#9b59b6', INDIGO:'#3f51b5', TEAL:'#009688', AMBER:'#ffc107',
+  DEEP_ORANGE:'#ff5722', BROWN:'#795548', BLUE_GRAY:'#607d8b',
+  LIME:'#cddc39', DEEP_PURPLE:'#673ab7', LIGHT_PINK:'#f48fb1', LAVENDER:'#ce93d8',
+};
+const AUTO_COLORS = ['#5865f2','#3ba55c','#e5a94e','#b392f0','#79b8ff','#e5484d','#2dd4bf','#f8a34d'];
+
+function stageColor(stage, idx) {
+  const def = state.stageDefMap[stage.stageDefinitionId];
+  const key = (def?.color || stage.color || '').toUpperCase().replace(/\s+/g,'_');
+  return STAGE_COLORS[key] || AUTO_COLORS[idx % AUTO_COLORS.length];
+}
+
+function taskDates(task) {
+  const s = task.scheduledStart ? new Date(task.scheduledStart) : null;
+  const e = task.dueDate ? new Date(task.dueDate) : (task.scheduledEnd ? new Date(task.scheduledEnd) : null);
+  const dur = (task.duration || 0) * 60000; // ms
+  if (s && e && e > s) return { start: s, end: e };
+  if (s && dur)  return { start: s, end: new Date(s.getTime() + Math.max(dur, 86400000)) };
+  if (e && dur)  return { start: new Date(e.getTime() - Math.max(dur, 86400000)), end: e };
+  if (s) return { start: s, end: new Date(s.getTime() + 86400000) };
+  if (e) return { start: new Date(e.getTime() - 86400000), end: e };
+  return null;
+}
+
+// stageDates derives start/end purely from the scheduled dates of tasks in that stage
+function stageDates(stage, tasks) {
+  const stageTasks = tasks.filter(t => t.stageDefinitionId === stage.stageDefinitionId);
+  const starts = [], ends = [];
+  stageTasks.forEach(t => {
+    const d = taskDates(t);
+    if (d) { starts.push(d.start.getTime()); ends.push(d.end.getTime()); }
+  });
+  if (!starts.length && !ends.length) return null;
+  const start = new Date(starts.length ? Math.min(...starts) : Math.min(...ends) - 86400000);
+  const end   = new Date(ends.length   ? Math.max(...ends)   : Math.max(...starts) + 86400000);
+  return { start, end };
+}
+
+function projectDateRange(project, tasks) {
+  const allStarts = [], allEnds = [];
+  if (project.createdTime)  allStarts.push(new Date(project.createdTime));
+  if (project.startDate)    allStarts.push(new Date(project.startDate));
+  if (project.dueDate)      allEnds.push(new Date(project.dueDate));
+  if (project.estimatedCompletionTime) allEnds.push(new Date(project.estimatedCompletionTime));
+  tasks.forEach(t => { const d = taskDates(t); if (d) { allStarts.push(d.start); allEnds.push(d.end); } });
+  if (!allStarts.length && !allEnds.length) return null;
+  const start = allStarts.length ? new Date(Math.min(...allStarts)) : new Date(Math.min(...allEnds) - 86400000 * 30);
+  const end   = allEnds.length   ? new Date(Math.max(...allEnds))   : new Date(Math.max(...allStarts) + 86400000 * 30);
+  return { start, end };
+}
+
+// ════════════════════════════════════════════════════════
+//  Gantt — selector
+// ════════════════════════════════════════════════════════
+function initGanttSelector() {
+  const list = document.getElementById('ganttProjectList');
+  if (!state.browseProjects.length) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px">Load Browse first to see projects.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  const sorted = [...state.browseProjects].sort((a,b) => {
+    if (isArchFolder(a) && !isArchFolder(b)) return -1;
+    if (!isArchFolder(a) && isArchFolder(b)) return 1;
+    return getFolderName(a).localeCompare(getFolderName(b)) || a.name.localeCompare(b.name);
+  });
+  let lastFolder = null;
+  sorted.forEach(p => {
+    const folder = getFolderName(p);
+    if (folder !== lastFolder) {
+      const hdr = document.createElement('div');
+      hdr.style.cssText = 'padding:6px 14px 2px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-top:1px solid var(--border);margin-top:4px';
+      hdr.textContent = folder;
+      list.appendChild(hdr);
+      lastFolder = folder;
+    }
+    const item = document.createElement('div');
+    item.className = 'gantt-project-item';
+    const checked = state.gantt.selectedProjectIds.has(p.id);
+    item.innerHTML = `
+      <input type="checkbox" id="gp-${p.id}" ${checked ? 'checked' : ''} />
+      <div>
+        <div class="gantt-project-item-name">${escHtml(p.name)}</div>
+      </div>`;
+    item.querySelector('input').addEventListener('change', e => {
+      if (e.target.checked) addProjectToGantt(p);
+      else removeProjectFromGantt(p.id);
+    });
+    item.addEventListener('click', e => { if (e.target.tagName !== 'INPUT') item.querySelector('input').click(); });
+    list.appendChild(item);
+  });
+}
+
+async function addProjectToGantt(project) {
+  state.gantt.selectedProjectIds.add(project.id);
+  if (!state.projectCache[project.id]) {
+    const status = document.getElementById('ganttStatus');
+    status.textContent = `Loading ${project.name}…`;
+    await loadProject(project);
+    status.textContent = '';
+  }
+  renderGantt();
+}
+
+function removeProjectFromGantt(projectId) {
+  state.gantt.selectedProjectIds.delete(projectId);
+  renderGantt();
+}
+
+function addAllToGantt() {
+  state.browseProjects.forEach(p => {
+    document.getElementById(`gp-${p.id}`)?.click();
+    if (!state.gantt.selectedProjectIds.has(p.id)) addProjectToGantt(p);
+  });
+}
+
+// ════════════════════════════════════════════════════════
+//  Gantt — zoom
+// ════════════════════════════════════════════════════════
+function setGanttZoom(z) {
+  state.gantt.zoom = z;
+  ['month','week','day'].forEach(k => document.getElementById(`zoom-${k}`)?.classList.toggle('active', k === z));
+  renderGantt();
+}
+function ganttScrollToToday() {
+  const outer = document.getElementById('ganttOuter');
+  const line  = document.getElementById('ganttTodayLine');
+  if (!line) return;
+  const lineLeft = parseInt(line.style.left, 10);
+  outer.scrollLeft = lineLeft - outer.clientWidth / 2 + GANTT_LABEL_W;
+}
+
+// ════════════════════════════════════════════════════════
+//  Gantt — render
+// ════════════════════════════════════════════════════════
+function renderGantt() {
+  const inner   = document.getElementById('ganttInner');
+  const emptyEl = document.getElementById('ganttEmpty');
+  const ids     = [...state.gantt.selectedProjectIds];
+
+  if (!ids.length) {
+    inner.innerHTML = '<div class="gantt-empty" id="ganttEmpty">Select projects from the panel to build the Gantt.</div>';
+    return;
+  }
+
+  const pxPerDay = GANTT_PX[state.gantt.zoom];
+
+  // Compute global time bounds
+  let minMs = Infinity, maxMs = -Infinity;
+  ids.forEach(id => {
+    const p = state.projectCache[id];
+    if (!p) return;
+    const r = projectDateRange(p, p._tasks || []);
+    if (r) { minMs = Math.min(minMs, r.start); maxMs = Math.max(maxMs, r.end); }
+  });
+  if (!isFinite(minMs)) { inner.innerHTML = '<div class="gantt-empty" id="ganttEmpty">No date data found for selected projects.</div>'; return; }
+
+  // Pad edges
+  const minDate = new Date(minMs - 86400000 * 7);
+  const maxDate = new Date(maxMs + 86400000 * 14);
+  minDate.setHours(0,0,0,0);
+  maxDate.setHours(0,0,0,0);
+  const totalDays = (maxDate - minDate) / 86400000;
+  const timelineW = Math.round(totalDays * pxPerDay);
+
+  const toX = date => Math.round((new Date(date) - minDate) / 86400000 * pxPerDay);
+
+  inner.innerHTML = '';
+  inner.style.width = (GANTT_LABEL_W + timelineW) + 'px';
+
+  // ── Header ──
+  const header = document.createElement('div');
+  header.className = 'gantt-header-row';
+  header.style.height = '48px';
+  header.innerHTML = `<div class="gantt-label header-label" style="height:48px">Project / Stage / Task</div>`;
+  const timeHdr = document.createElement('div');
+  timeHdr.className = 'gantt-time-header';
+  timeHdr.style.cssText = `width:${timelineW}px;height:48px;position:relative;flex-shrink:0;`;
+  buildTimeHeader(timeHdr, minDate, maxDate, pxPerDay);
+  header.appendChild(timeHdr);
+  inner.appendChild(header);
+
+  // ── Grid + today line overlay (rendered behind rows) ──
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `position:absolute;top:48px;left:${GANTT_LABEL_W}px;width:${timelineW}px;bottom:0;pointer-events:none;z-index:1;`;
+  buildGridLines(overlay, minDate, maxDate, pxPerDay);
+  const todayX = toX(new Date());
+  if (todayX >= 0 && todayX <= timelineW) {
+    const tl = document.createElement('div');
+    tl.className = 'gantt-today-line';
+    tl.id = 'ganttTodayLine';
+    tl.style.left = todayX + 'px';
+    overlay.appendChild(tl);
+  }
+  inner.appendChild(overlay);
+
+  // ── Rows ──
+  ids.forEach((id, pidx) => {
+    const project = state.projectCache[id];
+    if (!project) return;
+    const tasks = project._tasks || [];
+
+    const pColor = AUTO_COLORS[pidx % AUTO_COLORS.length];
+    const expanded = !state.gantt.collapsedProjects.has(id);
+    const pRange   = projectDateRange(project, tasks);
+
+    // Project row
+    const pRow = makeRow('project', GANTT_ROW_H.project, timelineW);
+    const pLabel = pRow.querySelector('.gantt-label');
+    pLabel.innerHTML = `
+      <span class="gantt-toggle">${expanded ? '▼' : '▶'}</span>
+      <span class="gantt-row-name" title="${escHtml(project.name)}">${escHtml(project.name)}</span>`;
+    pLabel.querySelector('.gantt-toggle').addEventListener('click', () => {
+      state.gantt.collapsedProjects[expanded ? 'add' : 'delete'](id);
+      renderGantt();
+    });
+    if (pRange) {
+      const bar = makeBar(toX(pRange.start), toX(pRange.end), GANTT_ROW_H.project, 'project-bar', pColor);
+      const agg = projectAggregates(project);
+      const pct = agg.totalPct ?? 0;
+      bar.innerHTML = `<div class="gantt-bar-label">${escHtml(project.name)} ${pct}%</div>`;
+      attachTooltip(bar, buildProjectTooltip(project, tasks, agg));
+      pRow.querySelector('.gantt-bars').appendChild(bar);
+    }
+    inner.appendChild(pRow);
+
+    if (!expanded) return;
+
+    // Stage rows — start = previous stage's dueDate, end = this stage's dueDate.
+    const stages = (project.stages || []).slice().sort((a,b) => (a.rank??0)-(b.rank??0));
+    let prevStageDueDate = null;
+    stages.forEach((stage, sidx) => {
+      const sKey    = `${id}-${stage.stageDefinitionId}`;
+      const sExp    = !state.gantt.collapsedStages.has(sKey);
+      const sName   = stageInstanceName(stage);
+      const sColor  = stageColor(stage, sidx);
+      const sStatus = stageStatus(stage, project);
+      const sRange  = stage.dueDate
+        ? (() => {
+            const end   = new Date(stage.dueDate);
+            const start = prevStageDueDate
+              ? new Date(prevStageDueDate)
+              : new Date(end.getTime() - 86400000);
+            return { start, end };
+          })()
+        : stageDates(stage, tasks);
+      if (stage.dueDate) prevStageDueDate = stage.dueDate;
+      const sDone   = stage.completedTaskCount ?? 0;
+      const sTotal  = stage.taskCount ?? 0;
+
+      const sRow = makeRow('stage', GANTT_ROW_H.stage, timelineW);
+      sRow.querySelector('.gantt-label').innerHTML = `
+        <span class="gantt-toggle">${sExp ? '▼' : '▶'}</span>
+        <span class="gantt-row-name" title="${escHtml(sName)}">${escHtml(sName)}</span>`;
+      sRow.querySelector('.gantt-toggle').addEventListener('click', () => {
+        state.gantt.collapsedStages[sExp ? 'add' : 'delete'](sKey);
+        renderGantt();
+      });
+      if (sRange) {
+        const alpha = sStatus === 'completed' ? 'cc' : sStatus === 'canceled' ? '66' : 'dd';
+        const bar   = makeBar(toX(sRange.start), toX(sRange.end), GANTT_ROW_H.stage, 'stage-bar', sColor + alpha);
+        const pct   = sTotal > 0 ? Math.round(sDone / sTotal * 100) : 0;
+        const fillColor = sColor + 'ff';
+        bar.style.background = pct > 0
+          ? `linear-gradient(to right, ${fillColor} ${pct}%, ${sColor + alpha} ${pct}%)`
+          : sColor + alpha;
+        bar.innerHTML = `<div class="gantt-bar-label">${escHtml(sName)} ${pct}%</div>`;
+        stage._name = sName;
+        stage._ganttBar = bar;
+        attachTooltip(bar, buildStageTooltip(stage, sName, sStatus, sDone, sTotal));
+        if (sStatus !== 'completed' && sStatus !== 'canceled') {
+          attachDragStage(bar, stage, project, sRange, pxPerDay, stages, sidx);
+        }
+        if (state.gantt.pendingChanges.some(c => c.entityId === stage.stageDefinitionId)) {
+          bar.classList.add('pending-change');
+        }
+        sRow.querySelector('.gantt-bars').appendChild(bar);
+      }
+      inner.appendChild(sRow);
+
+      if (!sExp) return;
+
+      // Task rows
+      const stageTasks = tasks
+        .filter(t => t.stageDefinitionId === stage.stageDefinitionId)
+        .sort((a,b) => { const da = taskDates(a), db = taskDates(b); return (da?.start||0) - (db?.start||0); });
+
+      stageTasks.forEach(task => {
+        const tRange  = taskDates(task);
+        const tStatus = taskStatusInfo(task);
+        const tRow    = makeRow('task', GANTT_ROW_H.task, timelineW);
+        tRow.querySelector('.gantt-label').innerHTML =
+          `<span style="width:14px;flex-shrink:0;text-align:center;font-size:10px;color:${tStatus.color};font-weight:700">${tStatus.icon}</span>
+           <span class="gantt-row-name" title="${escHtml(task.name)}">${escHtml(task.name)}</span>`;
+        if (tRange) {
+          const bar = makeBar(toX(tRange.start), toX(tRange.end), GANTT_ROW_H.task, 'task-bar', tStatus.color);
+          attachTooltip(bar, buildTaskTooltip(task, tRange));
+          if (!isTaskCompleted(task)) attachDragTask(bar, task, tRange, pxPerDay);
+          if (state.gantt.pendingChanges.some(c => c.entityId === task.id)) bar.classList.add('pending-change');
+          tRow.querySelector('.gantt-bars').appendChild(bar);
+        }
+        inner.appendChild(tRow);
+      });
+    });
+
+    // Tasks with no stageDefinitionId or unrecognised stage — show after all stage rows
+    const assignedIds = new Set(stages.map(s => s.stageDefinitionId));
+    const ungrouped = tasks.filter(t => !t.stageDefinitionId || !assignedIds.has(t.stageDefinitionId));
+    if (ungrouped.length) {
+      const uKey = `${id}-ungrouped`;
+      const uExp = !state.gantt.collapsedStages.has(uKey);
+      const uRow = makeRow('stage', GANTT_ROW_H.stage, timelineW);
+      uRow.querySelector('.gantt-label').innerHTML = `
+        <span class="gantt-toggle">${uExp ? '▼' : '▶'}</span>
+        <span class="gantt-row-name" style="color:var(--muted)">Unassigned (${ungrouped.length})</span>`;
+      uRow.querySelector('.gantt-toggle').addEventListener('click', () => {
+        state.gantt.collapsedStages[uExp ? 'add' : 'delete'](uKey);
+        renderGantt();
+      });
+      inner.appendChild(uRow);
+      if (uExp) {
+        ungrouped.forEach(task => {
+          const tRange  = taskDates(task);
+          const tStatus = taskStatusInfo(task);
+          const tRow    = makeRow('task', GANTT_ROW_H.task, timelineW);
+          tRow.querySelector('.gantt-label').innerHTML =
+            `<span style="width:14px;flex-shrink:0;text-align:center;font-size:10px;color:${tStatus.color};font-weight:700">${tStatus.icon}</span>
+             <span class="gantt-row-name" title="${escHtml(task.name)}">${escHtml(task.name)}</span>`;
+          if (tRange) {
+            const bar = makeBar(toX(tRange.start), toX(tRange.end), GANTT_ROW_H.task, 'task-bar', tStatus.color);
+            attachTooltip(bar, buildTaskTooltip(task, tRange));
+            if (!isTaskCompleted(task)) attachDragTask(bar, task, tRange, pxPerDay);
+            if (state.gantt.pendingChanges.some(c => c.entityId === task.id)) bar.classList.add('pending-change');
+            tRow.querySelector('.gantt-bars').appendChild(bar);
+          }
+          inner.appendChild(tRow);
+        });
+      }
+    }
+  });
+}
+
+function makeRow(type, height, timelineW) {
+  const row = document.createElement('div');
+  row.className = `gantt-row ${type}-row`;
+  row.style.height = height + 'px';
+  row.innerHTML = `<div class="gantt-label"></div><div class="gantt-bars" style="width:${timelineW}px;height:${height}px;position:relative;flex-shrink:0;"></div>`;
+  return row;
+}
+
+function makeBar(x1, x2, rowH, cls, color) {
+  const bar = document.createElement('div');
+  bar.className = `gantt-bar ${cls}`;
+  const w = Math.max(x2 - x1, 4);
+  bar.style.cssText = `left:${x1}px;width:${w}px;background:${color};`;
+  return bar;
+}
+
+function buildTimeHeader(el, minDate, maxDate, pxPerDay) {
+  // Month labels (top half)
+  let d = new Date(minDate); d.setDate(1);
+  while (d < maxDate) {
+    const next = new Date(d); next.setMonth(next.getMonth() + 1);
+    const x1 = Math.max(0, Math.round((d - minDate) / 86400000 * pxPerDay));
+    const x2 = Math.round((next - minDate) / 86400000 * pxPerDay);
+    const lbl = document.createElement('div');
+    lbl.className = 'gantt-month-label';
+    lbl.style.cssText = `left:${x1}px;width:${x2-x1}px;`;
+    lbl.textContent = d.toLocaleDateString('en-US', { month:'short', year:'numeric' });
+    el.appendChild(lbl);
+    d = next;
+  }
+
+  // Sub-labels (bottom half): weeks for month/week zoom, days for day zoom
+  if (pxPerDay >= GANTT_PX.day) {
+    // day ticks
+    let dd = new Date(minDate);
+    while (dd < maxDate) {
+      const x = Math.round((dd - minDate) / 86400000 * pxPerDay);
+      const sub = document.createElement('div');
+      sub.className = 'gantt-sub-label';
+      sub.style.cssText = `left:${x}px;width:${pxPerDay}px;`;
+      sub.textContent = dd.getDate();
+      el.appendChild(sub);
+      dd.setDate(dd.getDate() + 1);
+    }
+  } else {
+    // week ticks
+    let dd = new Date(minDate);
+    // align to Monday
+    dd.setDate(dd.getDate() - ((dd.getDay() + 6) % 7));
+    let wk = 1;
+    while (dd < maxDate) {
+      const x = Math.round((dd - minDate) / 86400000 * pxPerDay);
+      const sub = document.createElement('div');
+      sub.className = 'gantt-sub-label';
+      const nextW = new Date(dd); nextW.setDate(nextW.getDate() + 7);
+      sub.style.cssText = `left:${x}px;width:${Math.round(7*pxPerDay)}px;`;
+      sub.textContent = pxPerDay >= GANTT_PX.week ? `W${wk}` : '';
+      el.appendChild(sub);
+      dd = nextW; wk++;
+    }
+  }
+}
+
+function buildGridLines(el, minDate, maxDate, pxPerDay) {
+  // vertical lines at month boundaries
+  let d = new Date(minDate); d.setDate(1); d.setMonth(d.getMonth()+1);
+  while (d < maxDate) {
+    const x = Math.round((d - minDate) / 86400000 * pxPerDay);
+    const line = document.createElement('div');
+    line.className = 'gantt-grid-line';
+    line.style.left = x + 'px';
+    el.appendChild(line);
+    d.setMonth(d.getMonth()+1);
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  Gantt — drag editing
+// ════════════════════════════════════════════════════════
+const ganttDragLabel = document.getElementById('ganttDragLabel');
+
+function attachDragTask(bar, task, range, pxPerDay) {
+  bar.style.cursor = 'grab';
+  bar.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    tooltip.style.display = 'none';
+    // Re-read entity dates at mousedown so multi-move stays accurate.
+    const cur = taskDates(task);
+    state.gantt.drag = {
+      type: 'task-move',
+      bar,
+      startX: e.clientX,
+      origLeft: parseFloat(bar.style.left),
+      origWidth: parseFloat(bar.style.width),
+      origStartMs: cur ? cur.start.getTime() : range.start.getTime(),
+      origEndMs:   cur ? cur.end.getTime()   : range.end.getTime(),
+      pxPerDay,
+      entity: task,
+      projectId: task._project?.id,
+      projectName: task._project?.name || '—',
+    };
+    bar.classList.add('dragging');
+  });
+}
+
+function attachDragStage(bar, stage, project, range, pxPerDay, stages, stageIdx) {
+  bar.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    e.preventDefault();
+    tooltip.style.display = 'none';
+    const origLeft  = parseFloat(bar.style.left);
+    const origWidth = parseFloat(bar.style.width);
+    const origEndMs = stage.dueDate ? new Date(stage.dueDate).getTime() : range.end.getTime();
+    // Capture all subsequent stage bars so they shift during drag preview.
+    const subsequent = stages.slice(stageIdx + 1)
+      .filter(s => s._ganttBar)
+      .map(s => ({ stage: s, bar: s._ganttBar, origLeft: parseFloat(s._ganttBar.style.left) }));
+    state.gantt.drag = {
+      type: 'stage-move',
+      bar,
+      startX: e.clientX,
+      origLeft,
+      origWidth,
+      origStartMs: origEndMs - (origWidth / pxPerDay) * 86400000,
+      origEndMs,
+      pxPerDay,
+      entity: stage,
+      projectId: project.id,
+      projectName: project.name || '—',
+      subsequent,
+    };
+    bar.classList.add('dragging');
+  });
+}
+
+function updateCommitButton() {
+  const n = state.gantt.pendingChanges.length;
+  const btn = document.getElementById('ganttCommitBtn');
+  const cnt = document.getElementById('ganttPendingCount');
+  btn.style.display = n > 0 ? '' : 'none';
+  if (cnt) cnt.textContent = n;
+}
+
+function addPendingChange(change) {
+  // Deduplicate: if same entity + same field already pending, replace it
+  const key = change.entityId + ':' + change.type;
+  const idx = state.gantt.pendingChanges.findIndex(c => c.entityId + ':' + c.type === key);
+  if (idx >= 0) state.gantt.pendingChanges.splice(idx, 1);
+  state.gantt.pendingChanges.push(change);
+  change.bar?.classList.add('pending-change');
+  updateCommitButton();
+}
+
+// ════════════════════════════════════════════════════════
+//  Gantt — tooltips
+// ════════════════════════════════════════════════════════
+const tooltip = document.getElementById('ganttTooltip');
+document.addEventListener('mousemove', e => {
+  if (tooltip.style.display === 'block' && !state.gantt.drag) {
+    tooltip.style.left = (e.clientX + 14) + 'px';
+    tooltip.style.top  = Math.min(e.clientY + 14, window.innerHeight - tooltip.offsetHeight - 8) + 'px';
+  }
+  const drag = state.gantt.drag;
+  if (!drag) return;
+  const dx = e.clientX - drag.startX;
+  const deltaDays = Math.round(dx / drag.pxPerDay); // snap to whole days
+  if (drag.type === 'task-move') {
+    drag.bar.style.left = (drag.origLeft + deltaDays * drag.pxPerDay) + 'px';
+    const newStart = new Date(drag.origStartMs + deltaDays * 86400000);
+    ganttDragLabel.textContent = `Start: ${fmtDate(newStart)}`;
+  } else if (drag.type === 'stage-move') {
+    // Left edge fixed (anchored to prev stage dueDate); right edge = dueDate moves.
+    const newWidth = Math.max(drag.origWidth + deltaDays * drag.pxPerDay, drag.pxPerDay);
+    drag.bar.style.width = newWidth + 'px';
+    drag.subsequent.forEach(sub => {
+      sub.bar.style.left = (sub.origLeft + deltaDays * drag.pxPerDay) + 'px';
+    });
+    const newDue = new Date(drag.origEndMs + deltaDays * 86400000);
+    ganttDragLabel.textContent = `Due: ${fmtDate(newDue)}`;
+  }
+  ganttDragLabel.style.display = 'block';
+  ganttDragLabel.style.left = (e.clientX + 14) + 'px';
+  ganttDragLabel.style.top  = (e.clientY - 36) + 'px';
+});
+
+document.addEventListener('mouseup', e => {
+  const drag = state.gantt.drag;
+  if (!drag) return;
+  state.gantt.drag = null;
+  drag.bar.classList.remove('dragging');
+  ganttDragLabel.style.display = 'none';
+
+  const dx = e.clientX - drag.startX;
+  const deltaDays = Math.round(dx / drag.pxPerDay); // snap to whole days
+
+  if (Math.abs(deltaDays) < 1) {
+    drag.bar.style.left  = drag.origLeft + 'px';
+    drag.bar.style.width = drag.origWidth + 'px';
+    drag.subsequent?.forEach(sub => { sub.bar.style.left = sub.origLeft + 'px'; });
+    return;
+  }
+
+  // Stage the change in-memory immediately (bar stays in new position).
+  // Task moves: if the task was auto-scheduled, disable it (autoScheduled: null) so
+  // scheduledStart/End become writable. Manual tasks skip the autoScheduled field.
+  if (drag.type === 'task-move') {
+    const deltaMs      = deltaDays * 86400000; // deltaDays is already an integer
+    const durationMs   = drag.origEndMs - drag.origStartMs;
+    const wasAutoSched = drag.entity.autoScheduled != null;
+    const hasScheduled = drag.entity.scheduledStart != null;
+    const newStart     = new Date(drag.origStartMs + deltaMs);
+    const newEnd       = new Date(newStart.getTime() + durationMs);
+
+    let apiBody, origFields, newFields;
+
+    if (wasAutoSched) {
+      // Auto-scheduled: disable it and pin to new times
+      origFields = { scheduledStart: drag.entity.scheduledStart, scheduledEnd: drag.entity.scheduledEnd, autoScheduled: drag.entity.autoScheduled };
+      newFields  = { scheduledStart: newStart.toISOString(), scheduledEnd: newEnd.toISOString(), autoScheduled: null };
+      apiBody    = { autoScheduled: null, scheduledStart: newStart.toISOString(), scheduledEnd: newEnd.toISOString() };
+      drag.entity.scheduledStart = newStart.toISOString();
+      drag.entity.scheduledEnd   = newEnd.toISOString();
+      drag.entity.autoScheduled  = null;
+    } else if (hasScheduled) {
+      // Manually pinned scheduled times (no auto-schedule) — shift them directly
+      origFields = { scheduledStart: drag.entity.scheduledStart, scheduledEnd: drag.entity.scheduledEnd };
+      newFields  = { scheduledStart: newStart.toISOString(), scheduledEnd: newEnd.toISOString() };
+      apiBody    = { scheduledStart: newStart.toISOString(), scheduledEnd: newEnd.toISOString() };
+      drag.entity.scheduledStart = newStart.toISOString();
+      drag.entity.scheduledEnd   = newEnd.toISOString();
+    } else {
+      // No scheduling at all — bar is anchored to dueDate; shift that instead
+      const origDue = drag.entity.dueDate;
+      const newDue  = new Date((origDue ? new Date(origDue).getTime() : drag.origEndMs) + deltaMs);
+      origFields = { dueDate: origDue };
+      newFields  = { dueDate: newDue.toISOString() };
+      apiBody    = { dueDate: newDue.toISOString() };
+      drag.entity.dueDate = newDue.toISOString();
+    }
+
+    addPendingChange({
+      type: 'task-move',
+      label: 'Move task',
+      entityId: drag.entity.id,
+      entityName: drag.entity.name,
+      entityType: 'task',
+      projectId: drag.projectId,
+      projectName: drag.projectName,
+      origFields,
+      newFields,
+      apiPath: `/v1/tasks/${drag.entity.id}`,
+      apiBody,
+      entityRef: drag.entity,
+      bar: drag.bar,
+    });
+  } else if (drag.type === 'stage-move') {
+    const deltaMs = deltaDays * 86400000;
+
+    // Helper: add one stage pending change and update its in-memory dueDate.
+    const applyStageChange = (s, b) => {
+      const origDue   = s.dueDate;
+      const newDueStr = new Date(new Date(origDue).getTime() + deltaMs).toISOString().slice(0, 10);
+      s.dueDate = newDueStr;
+      addPendingChange({
+        type: 'stage-move',
+        label: 'Move stage',
+        entityId: s.stageDefinitionId,
+        entityName: s._name || s.stageDefinitionId,
+        entityType: 'stage',
+        projectId: drag.projectId,
+        projectName: drag.projectName,
+        origFields: { dueDate: origDue },
+        newFields:  { dueDate: newDueStr },
+        apiPath: `/v2/projects/${drag.projectId}/stages/${s.stageDefinitionId}`,
+        apiBody: { dueDate: newDueStr },
+        entityRef: s,
+        bar: b,
+      });
+    };
+
+    // Apply dragged stage first, then subsequent stages in order (earliest → latest).
+    applyStageChange(drag.entity, drag.bar);
+    drag.subsequent.forEach(sub => applyStageChange(sub.stage, sub.bar));
+
+    renderGantt();
+  }
+});
+
+// ════════════════════════════════════════════════════════
+//  Gantt — commit modal
+// ════════════════════════════════════════════════════════
+function showCommitModal() {
+  const overlay = document.getElementById('ganttCommitOverlay');
+  const body    = document.getElementById('ganttCommitBody');
+  const changes = state.gantt.pendingChanges;
+
+  const typeLabel = {
+    'task-move':          'Move task',
+    'stage-move':         'Move stage',
+  };
+
+  const fmtField = (v) => v ? fmtDate(v) : '—';
+
+  const apiChanges = changes.filter(c => c.apiPath || c.subChanges?.length);
+
+  // Summary rows
+  const summaryRows = changes.map(c => {
+    let dateHtml = '';
+    if (c.type === 'task-move') {
+      if ('dueDate' in c.origFields) {
+        dateHtml = `Due: ${fmtField(c.origFields.dueDate)} → ${fmtField(c.newFields.dueDate)}`;
+      } else {
+        const autoNote = c.origFields.autoScheduled != null ? ' · disables auto-schedule' : '';
+        dateHtml = `Start: ${fmtField(c.origFields.scheduledStart)} → ${fmtField(c.newFields.scheduledStart)}${autoNote}`;
+      }
+    } else if (c.type === 'stage-move') {
+      dateHtml = `Due: ${fmtField(c.origFields.dueDate)} → ${fmtField(c.newFields.dueDate)}`;
+    }
+    return `<div class="gantt-commit-row">
+      <span class="gantt-commit-row-type">${typeLabel[c.type] || c.type}</span>
+      <span class="gantt-commit-row-name" title="${escHtml(c.entityName)}">${escHtml(c.entityName)}</span>
+      <span class="gantt-commit-row-dates">${dateHtml}</span>
+      <span class="gantt-commit-row-project">${escHtml(c.projectName)}</span>
+    </div>`;
+  }).join('');
+
+  // Debug JSON
+  const debugObj = changes.map(c => ({
+    type: c.type,
+    entityType: c.entityType,
+    entityId: c.entityId,
+    entityName: c.entityName,
+    projectId: c.projectId,
+    projectName: c.projectName,
+    apiPath: c.apiPath,
+    apiBody: c.apiBody,
+    origFields: c.origFields,
+    newFields: c.newFields,
+    ...(c.subChanges ? { subChanges: c.subChanges.map(s => ({
+      taskId: s.taskId, taskName: s.taskName,
+      origStart: s.origStart, origEnd: s.origEnd,
+      newStart: s.newStart, newEnd: s.newEnd,
+    })) } : {}),
+  }));
+
+  body.innerHTML = `
+    <div class="gantt-commit-section">
+      <div class="gantt-commit-section-title">${changes.length} change${changes.length !== 1 ? 's' : ''} pending · ${apiChanges.length} will be saved to Motion</div>
+      ${summaryRows}
+    </div>
+    <span class="gantt-debug-toggle" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.textContent=this.nextElementSibling.style.display==='none'?'▶ Show debug details':'▼ Hide debug details'">▶ Show debug details</span>
+    <div class="gantt-debug-block" style="display:none">${escHtml(JSON.stringify(debugObj, null, 2))}</div>
+  `;
+
+  const applyBtn = document.getElementById('ganttApplyBtn');
+  applyBtn.textContent = apiChanges.length
+    ? `Apply ${apiChanges.length} Change${apiChanges.length !== 1 ? 's' : ''} to Motion`
+    : 'Dismiss (visual only)';
+  overlay.style.display = 'flex';
+}
+
+function closeCommitModal() {
+  document.getElementById('ganttCommitOverlay').style.display = 'none';
+}
+
+async function applyPendingChanges() {
+  const changes = state.gantt.pendingChanges;
+  const btn = document.getElementById('ganttApplyBtn');
+  btn.disabled = true;
+  btn.textContent = 'Applying…';
+
+  const errors = [];
+  for (const c of changes) {
+    if (!c.apiPath && !c.subChanges?.length) continue;
+    try {
+      await motionPatch(c.apiPath, c.apiBody);
+    } catch (err) {
+      errors.push(`${c.entityName}: ${err.message}`);
+    }
+  }
+
+  btn.disabled = false;
+  if (errors.length) {
+    btn.textContent = `${errors.length} failed`;
+    document.getElementById('ganttCommitBody').insertAdjacentHTML('afterbegin',
+      `<div class="alert alert-error" style="margin-bottom:12px">${errors.map(escHtml).join('<br>')}</div>`);
+    return;
+  }
+
+  state.gantt.pendingChanges = [];
+  updateCommitButton();
+  closeCommitModal();
+  document.getElementById('ganttStatus').textContent = 'Changes applied';
+  setTimeout(() => { document.getElementById('ganttStatus').textContent = ''; }, 3000);
+  renderGantt();
+}
+
+function discardPendingChanges() {
+  for (const c of state.gantt.pendingChanges) {
+    if (c.type === 'task-move') {
+      if ('dueDate' in c.origFields) {
+        c.entityRef.dueDate = c.origFields.dueDate;
+      } else {
+        c.entityRef.scheduledStart = c.origFields.scheduledStart;
+        c.entityRef.scheduledEnd   = c.origFields.scheduledEnd;
+        if ('autoScheduled' in c.origFields) c.entityRef.autoScheduled = c.origFields.autoScheduled;
+      }
+    } else if (c.type === 'stage-move') {
+      c.entityRef.dueDate = c.origFields.dueDate;
+    }
+  }
+  state.gantt.pendingChanges = [];
+  updateCommitButton();
+  closeCommitModal();
+  renderGantt();
+}
+
+function attachTooltip(el, htmlContent) {
+  el.addEventListener('mouseenter', () => {
+    tooltip.innerHTML = htmlContent;
+    tooltip.style.display = 'block';
+  });
+  el.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+}
+
+function ttRow(label, value) {
+  return `<div class="gantt-tooltip-row"><span class="gantt-tooltip-label">${label}</span><span class="gantt-tooltip-value">${value}</span></div>`;
+}
+
+function buildProjectTooltip(project, tasks, agg) {
+  const done = agg.completedCount ?? tasks.filter(isTaskCompleted).length;
+  const total = agg.taskCount ?? tasks.length;
+  const pct = total ? Math.round(done/total*100) : 0;
+  const stage = getStageName(project) || '—';
+  return `
+    <div class="gantt-tooltip-title">${escHtml(project.name)}</div>
+    ${ttRow('Stage:', stage)}
+    ${ttRow('Progress:', `${done} / ${total} tasks (${pct}%)`)}
+    ${project.dueDate ? ttRow('Due:', fmtDate(project.dueDate)) : ''}
+    ${project.estimatedCompletionTime ? ttRow('Est. end:', fmtDate(project.estimatedCompletionTime)) : ''}
+    ${agg.totalMins ? ttRow('Duration:', fmtHrMin(agg.totalMins)) : ''}`;
+}
+
+function buildStageTooltip(stage, name, status, done, total) {
+  const pct = total ? Math.round(done/total*100) : 0;
+  const openCount = total - done - (stage.canceledTaskCount ?? 0);
+  return `
+    <div class="gantt-tooltip-title">${escHtml(name)}</div>
+    ${ttRow('Status:', status.charAt(0).toUpperCase() + status.slice(1))}
+    ${ttRow('Completed:', `${done} tasks`)}
+    ${ttRow('Remaining:', `${openCount} tasks`)}
+    ${ttRow('Total:', `${total} tasks (${pct}%)`)}
+    ${stage.dueDate ? ttRow('Due:', fmtDate(stage.dueDate)) : ''}
+    ${stage.estimatedCompletionTime ? ttRow('Est. end:', fmtDate(stage.estimatedCompletionTime)) : ''}
+    ${stage.duration ? ttRow('Duration:', fmtHrMin(stage.duration)) : ''}`;
+}
+
+function buildTaskTooltip(task, range) {
+  const assignees = (task.assignees || (task.assignee ? [task.assignee] : []))
+    .map(a => a.name || a.email || '?').join(', ') || 'Unassigned';
+  const status = task.status?.name || task.status || '—';
+  return `
+    <div class="gantt-tooltip-title">${escHtml(task.name)}</div>
+    ${ttRow('Status:', status)}
+    ${ttRow('Assignee:', assignees)}
+    ${range?.start ? ttRow('Start:', fmtDate(range.start)) : ''}
+    ${range?.end   ? ttRow('End:', fmtDate(range.end)) : ''}
+    ${task.duration ? ttRow('Duration:', fmtHrMin(task.duration)) : ''}
+    ${task.priorityLevel ? ttRow('Priority:', task.priorityLevel) : ''}`;
+}
+
+// ════════════════════════════════════════════════════════
+//  Metadata — Stage Name Mapping
+// ════════════════════════════════════════════════════════
+const STAGE_META_KEY = 'motion_stage_names';
+
+function loadStageMetaForWs(wsId) {
+  return JSON.parse(localStorage.getItem(STAGE_META_KEY) || '{}')[wsId] || {};
+}
+
+function saveStageMapping(wsId, stageId, name) {
+  const meta = JSON.parse(localStorage.getItem(STAGE_META_KEY) || '{}');
+  if (!meta[wsId]) meta[wsId] = {};
+  if (name.trim()) meta[wsId][stageId] = name.trim();
+  else delete meta[wsId][stageId];
+  localStorage.setItem(STAGE_META_KEY, JSON.stringify(meta));
+  // Refresh browse cards so stage badges pick up the new name
+  if (state.browseProjects.length) renderBrowseFolders(state.browseProjects);
+}
+
+let metaScope = 'workspace';
+
+function setMetaScope(scope) {
+  metaScope = scope;
+  ['workspace', 'folder', 'project'].forEach(s => {
+    document.getElementById(`scope-btn-${s}`).classList.toggle('active', s === scope);
+    document.getElementById(`meta-fields-${s}`).classList.toggle('hidden', s !== scope);
+  });
+}
+
+async function prefillSpacialWs(target) {
+  if (!getApiKey()) { showAlert('metaAlert', 'Please enter your API key first.'); return; }
+  if (!state.spacialWsId) {
+    try {
+      const wsList = await motionGetAll('/v1/workspaces', {}, 'workspaces');
+      wsList.forEach(w => { state.wsMap[w.id] = w; });
+      const spacial = wsList.find(w => w.name.toLowerCase().includes(PREFERRED_WS));
+      if (spacial) state.spacialWsId = spacial.id;
+    } catch {}
+  }
+  if (!state.spacialWsId) { showAlert('metaAlert', 'Could not find Spacial Services workspace.', 'warning'); return; }
+  if (target === 'folder') document.getElementById('metaFolderWsId').value = state.spacialWsId;
+  else document.getElementById('metaWorkspaceId').value = state.spacialWsId;
+}
+
+async function loadMetaView() {
+  if (!getApiKey()) { showAlert('metaAlert', 'Please enter your API key.'); return; }
+  const btn = document.getElementById('metaLoadBtn'), sp = document.getElementById('metaSpinner');
+  btn.disabled = true; sp.style.display = 'block';
+  clearAlert('metaAlert');
+
+  try {
+    let projects = [];
+    let wsId = null;
+
+    if (metaScope === 'workspace') {
+      wsId = document.getElementById('metaWorkspaceId').value.trim();
+      if (!wsId) { showAlert('metaAlert', 'Please enter a Workspace ID.'); return; }
+      if (!state.wsMap[wsId]) {
+        const wsList = await motionGetAll('/v1/workspaces', {}, 'workspaces');
+        wsList.forEach(w => { state.wsMap[w.id] = w; });
+      }
+      projects = await listProjects(wsId);
+      projects.forEach(p => { p._workspaceName = state.wsMap[wsId]?.name || wsId; });
+
+    } else if (metaScope === 'folder') {
+      const folderValue = document.getElementById('metaFolderValue').value.trim();
+      wsId = document.getElementById('metaFolderWsId').value.trim();
+      if (!folderValue) { showAlert('metaAlert', 'Please enter a folder name or ID.'); return; }
+      if (!wsId) { showAlert('metaAlert', 'Please enter a Workspace ID.'); return; }
+      if (!state.wsMap[wsId]) {
+        const wsList = await motionGetAll('/v1/workspaces', {}, 'workspaces');
+        wsList.forEach(w => { state.wsMap[w.id] = w; });
+      }
+      const allProjects = await listProjects(wsId);
+      allProjects.forEach(p => { p._workspaceName = state.wsMap[wsId]?.name || wsId; });
+      const fv = folderValue.toLowerCase();
+      projects = allProjects.filter(p => {
+        const folder = p.projectFolder || p.folder || {};
+        const fName = (typeof folder === 'string' ? folder : folder.name) || '';
+        const fId   = typeof folder === 'object' ? (folder.id || '') : '';
+        return fName.toLowerCase().includes(fv) || fId.toLowerCase() === fv.toLowerCase();
+      });
+      if (!projects.length) {
+        showAlert('metaAlert', `No projects found matching folder "${folderValue}".`, 'warning');
+        return;
+      }
+
+    } else if (metaScope === 'project') {
+      const projectId = document.getElementById('metaProjectId').value.trim();
+      if (!projectId) { showAlert('metaAlert', 'Please enter a Project ID.'); return; }
+      const data = await motionGet(`/v1/projects/${projectId}`);
+      const p = data.project || data;
+      wsId = p.workspaceId;
+      if (wsId && !state.wsMap[wsId]) {
+        const wsList = await motionGetAll('/v1/workspaces', {}, 'workspaces');
+        wsList.forEach(w => { state.wsMap[w.id] = w; });
+      }
+      p._workspaceName = state.wsMap[wsId]?.name || wsId || '';
+      projects = [p];
+    }
+
+    // Fetch tasks for all projects to build stage→task name associations
+    const btn2 = document.getElementById('metaLoadBtn');
+    btn2.textContent = `Loading tasks for ${projects.length} project${projects.length !== 1 ? 's' : ''}…`;
+    const tasksByProject = {};
+    await pMap(projects, async p => {
+      try {
+        tasksByProject[p.id] = await motionGetAll('/v1/tasks', { projectId: p.id, includeAllStatuses: 'true' }, 'tasks');
+      } catch {
+        tasksByProject[p.id] = [];
+      }
+    }, 4);
+    btn2.textContent = 'Load Stage IDs';
+
+    // Collect all distinct stageDefinitionIds from project.stages[], with task name lists
+    const stageMap = {};
+    projects.forEach(p => {
+      const tasks = tasksByProject[p.id] || [];
+      (p.stages || []).forEach(s => {
+        if (!s.stageDefinitionId) return;
+        if (!stageMap[s.stageDefinitionId]) {
+          stageMap[s.stageDefinitionId] = { id: s.stageDefinitionId, color: s.color, activeProjects: [], allProjects: [], taskNames: [] };
+        }
+        const entry = stageMap[s.stageDefinitionId];
+        if (!entry.allProjects.includes(p.name)) entry.allProjects.push(p.name);
+        if (p.activeStageDefinitionId === s.stageDefinitionId && !entry.activeProjects.includes(p.name))
+          entry.activeProjects.push(p.name);
+        tasks
+          .filter(t => t.stageDefinitionId === s.stageDefinitionId)
+          .forEach(t => { if (t.name && !entry.taskNames.includes(t.name)) entry.taskNames.push(t.name); });
+      });
+    });
+
+    if (!Object.keys(stageMap).length) {
+      showAlert('metaAlert', 'No stage IDs found in the selected projects. Projects may not have stage data.', 'warning');
+      document.getElementById('metaContent').innerHTML = '';
+      return;
+    }
+
+    renderMetaContent(stageMap, wsId || state.spacialWsId, projects.length);
+  } catch (err) {
+    showAlert('metaAlert', `Error: ${err.message}`);
+  } finally {
+    btn.disabled = false; sp.style.display = 'none';
+  }
+}
+
+function renderMetaContent(stageMap, wsId, projectCount = 0) {
+  const container = document.getElementById('metaContent');
+  const userNames = loadStageMetaForWs(wsId);
+  const dotColorMap = {
+    RED:'#e5484d', BLUE:'#79b8ff', GREEN:'#3ba55c', YELLOW:'#e5a94e',
+    PURPLE:'#b392f0', ORANGE:'#f8a34d', PINK:'#f26fad', CYAN:'#2dd4bf',
+    GRAY:'#8b8fa8', DARK:'#22263a',
+  };
+
+  const stageIds = Object.keys(stageMap).sort((a, b) => {
+    const da = stageMap[a], db = stageMap[b];
+    if (da.activeProjects.length !== db.activeProjects.length) return db.activeProjects.length - da.activeProjects.length;
+    return db.allProjects.length - da.allProjects.length;
+  });
+
+  if (!stageIds.length) {
+    container.innerHTML = '<div class="empty-state"><h3>No stage IDs found in Architecture projects</h3></div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div style="margin-bottom:16px;font-size:13px;color:var(--muted)">
+      Found <strong style="color:var(--text)">${stageIds.length}</strong> distinct stage ID${stageIds.length !== 1 ? 's' : ''} across <strong style="color:var(--text)">${projectCount}</strong> project${projectCount !== 1 ? 's' : ''}.
+      <span style="margin-left:12px;opacity:.7">● Active stage in a project &nbsp; ○ Stage exists but not current</span>
+    </div>
+    ${stageIds.map(id => {
+      const info = stageMap[id];
+      const dotColor = dotColorMap[(info.color || '').toUpperCase()] || 'var(--muted)';
+      const savedName = userNames[id] || '';
+      const nameDisplay = savedName
+        ? `<span style="font-size:13px;font-weight:600;color:var(--text)">${escHtml(savedName)}</span>`
+        : `<span style="font-size:12px;color:var(--muted);font-style:italic">Not yet named</span>`;
+
+      return `
+        <div class="meta-stage-card">
+          <div class="meta-stage-header">
+            <div style="width:12px;height:12px;border-radius:50%;background:${dotColor};flex-shrink:0"></div>
+            <span class="meta-stage-id">${escHtml(id)}</span>
+            ${nameDisplay}
+            <span style="margin-left:auto;font-size:11px;color:var(--muted);white-space:nowrap">${info.allProjects.length} project${info.allProjects.length !== 1 ? 's' : ''} · ${info.activeProjects.length} active</span>
+          </div>
+          <div class="meta-stage-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+              <div>
+                <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Projects with this stage</div>
+                <div class="meta-project-list">
+                  ${info.allProjects.map(name => {
+                    const isActive = info.activeProjects.includes(name);
+                    return `<div class="meta-project-item ${isActive ? 'is-active' : ''}">
+                      <div class="${isActive ? 'meta-active-dot' : 'meta-inactive-dot'}"></div>
+                      <span>${escHtml(name)}</span>
+                      ${isActive ? '<span style="font-size:10px;font-weight:700;background:rgba(88,101,242,.15);color:var(--blue);padding:1px 5px;border-radius:3px;flex-shrink:0">ACTIVE</span>' : ''}
+                    </div>`;
+                  }).join('')}
+                </div>
+              </div>
+              <div>
+                <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">
+                  Task Names${info.taskNames.length ? ` (${info.taskNames.length} distinct)` : ''}
+                </div>
+                ${info.taskNames.length
+                  ? `<div style="display:flex;flex-direction:column;gap:4px">
+                      ${info.taskNames.slice().sort().map(n =>
+                        `<div style="font-size:12px;color:var(--text)">${escHtml(n)}</div>`
+                      ).join('')}
+                    </div>`
+                  : `<div style="font-size:12px;color:var(--muted);font-style:italic">No task associations found — tasks may not carry stageDefinitionId in this workspace</div>`
+                }
+              </div>
+            </div>
+            <div class="meta-name-row">
+              <input type="text" class="meta-name-input" placeholder="Enter stage name…"
+                value="${escHtml(savedName)}"
+                data-stage-id="${escHtml(id)}"
+                data-ws-id="${escHtml(wsId)}" />
+              <button class="btn btn-primary" style="padding:6px 16px;font-size:12px" onclick="saveMetaFromBtn(this)">Save</button>
+              <span class="meta-saved-badge" data-badge="${escHtml(id)}">✓ Saved</span>
+            </div>
+          </div>
+        </div>`;
+    }).join('')}`;
+
+  container.querySelectorAll('.meta-name-input').forEach(input => {
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') saveMetaFromInput(input); });
+  });
+}
+
+function saveMetaFromBtn(btn) {
+  saveMetaFromInput(btn.closest('.meta-name-row').querySelector('.meta-name-input'));
+}
+
+function saveMetaFromInput(input) {
+  const stageId = input.dataset.stageId;
+  const wsId    = input.dataset.wsId;
+  const name    = input.value.trim();
+  saveStageMapping(wsId, stageId, name);
+
+  const badge = input.closest('.meta-name-row').querySelector('.meta-saved-badge');
+  if (badge) { badge.classList.add('show'); setTimeout(() => badge.classList.remove('show'), 2000); }
+
+  // Update the header name display in-place
+  const hdr = input.closest('.meta-stage-card').querySelector('.meta-stage-header');
+  const spans = hdr.querySelectorAll('span');
+  // Third span (index 2) is the name display — after color dot and id span
+  const nameSpan = spans[1];
+  if (nameSpan) {
+    if (name) {
+      Object.assign(nameSpan.style, { fontSize:'13px', fontWeight:'600', color:'var(--text)', fontStyle:'' });
+      nameSpan.textContent = name;
+    } else {
+      Object.assign(nameSpan.style, { fontSize:'12px', fontWeight:'', color:'var(--muted)', fontStyle:'italic' });
+      nameSpan.textContent = 'Not yet named';
+    }
+  }
+}
+
+function downloadStageMeta() {
+  const wsId = state.spacialWsId;
+  const meta = JSON.parse(localStorage.getItem(STAGE_META_KEY) || '{}');
+  const payload = wsId
+    ? { workspaceId: wsId, workspaceName: state.wsMap[wsId]?.name || '', stageNames: meta[wsId] || {} }
+    : meta;
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `motion-stage-names${wsId ? '-' + wsId.slice(0, 8) : ''}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function uploadStageMeta(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      const meta   = JSON.parse(localStorage.getItem(STAGE_META_KEY) || '{}');
+      if (parsed.workspaceId && parsed.stageNames) {
+        // Single-workspace export format
+        meta[parsed.workspaceId] = { ...(meta[parsed.workspaceId] || {}), ...parsed.stageNames };
+      } else {
+        // Multi-workspace format: top-level keys are workspace IDs
+        Object.keys(parsed).forEach(k => {
+          if (k !== 'workspaceId' && k !== 'workspaceName' && typeof parsed[k] === 'object')
+            meta[k] = { ...(meta[k] || {}), ...parsed[k] };
+        });
+      }
+      localStorage.setItem(STAGE_META_KEY, JSON.stringify(meta));
+      if (state.browseProjects.length) renderBrowseFolders(state.browseProjects);
+      showAlert('metaAlert', 'Stage names imported. Click "Load Stage IDs" to refresh the view.', 'info');
+    } catch {
+      showAlert('metaAlert', 'Invalid JSON file — could not import.', 'error');
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ════════════════════════════════════════════════════════
+//  Init
+// ════════════════════════════════════════════════════════
+document.getElementById('projectName').addEventListener('keydown', e => { if (e.key==='Enter') runSearch(); });
+if (getApiKey()) loadBrowseView();
+</script>
+</body>
+</html>
